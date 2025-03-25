@@ -1,5 +1,6 @@
+// src/components/DataDisplay.jsx
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const API_URL = 'https://zealthy-exercise-fb2f.onrender.com'
@@ -32,8 +33,6 @@ const DataDisplay = () => {
     return date.toLocaleString();
   };
 
-  // Removed the unused navigateToAdmin function since we're using inline navigation
-
   if (loading) {
     return <div className="loading">Loading data...</div>;
   }
@@ -48,7 +47,7 @@ const DataDisplay = () => {
         <h1>Form Submissions Data</h1>
         <div className="nav-links">
           <button onClick={() => navigate('/admin')} className="nav-link">Back to Admin</button>
-          <Link to="/" className="nav-link">Back to Form</Link>
+          <button onClick={() => navigate('/')} className="nav-link">Back to Form</button>
         </div>
       </div>
       {submissions.length === 0 ? (

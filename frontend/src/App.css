@@ -31,14 +31,20 @@ body {
   color: #5c6bc0;
 }
 
-.admin-link, .back-link, .nav-link {
+.admin-link, .back-link, .nav-link, .back-to-form-btn {
   color: #5c6bc0;
   text-decoration: none;
   font-weight: bold;
   margin-left: 15px;
+  background: none;
+  border: none;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0;
 }
 
-.admin-link:hover, .back-link:hover, .nav-link:hover {
+.admin-link:hover, .back-link:hover, .nav-link:hover, .back-to-form-btn:hover {
   text-decoration: underline;
 }
 

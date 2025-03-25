@@ -1,6 +1,6 @@
 // src/components/Wizard.jsx
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // Removed unused Link import
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const API_URL = 'https://zealthy-exercise-fb2f.onrender.com';
@@ -8,7 +8,7 @@ const API_URL = 'https://zealthy-exercise-fb2f.onrender.com';
 const Wizard = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
-  const [formId, setFormId] = useState(null); // Store the form ID after initial save
+  const [formId, setFormId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     username: '',
@@ -51,63 +51,48 @@ const Wizard = () => {
               // Restore form data
               const savedData = response.data;
               
-              // Only restore if the username matches (security check)
               if (savedData.username === savedUsername && !savedData.is_complete) {
                 setFormId(savedFormId);
                 
                 // Restore all form data fields
                 const restoredData = {
                   username: savedData.username,
-                  password: '', // Don't restore password for security reasons
+                  password: '', 
                   address: savedData.address || '',
                   aboutYou: savedData.about_you || '',
-                  birthdate: savedData.birthdate || ''
+                  birthdate: savedData.birthdate || '',
+                  streetAddress: '',
+                  city: '',
+                  state: '',
+                  zipCode: ''
                 };
-                
-                // If address exists, try to parse it into components
+
                 if (savedData.address) {
                   try {
-                    // First, try to extract the zip code using a regex pattern
-                    // This looks for 5-digit or 5+4 digit zip code patterns
-                    const zipRegex = /\b\d{5}(?:-\d{4})?\b/;
-                    const zipMatch = savedData.address.match(zipRegex);
-                    
-                    if (zipMatch) {
-                      restoredData.zipCode = zipMatch[0];
-                    }
-                    
-                    // Now parse the rest of the address
-                    const addressParts = savedData.address.split(',');
+                    // Split the address by commas
+                    const addressParts = savedData.address.split(',').map(part => part.trim());
                     
                     // Street address is the first part
                     if (addressParts.length >= 1) {
-                      restoredData.streetAddress = addressParts[0].trim();
+                      restoredData.streetAddress = addressParts[0];
                     }
                     
-                    // City and state parsing
                     if (addressParts.length >= 2) {
-                      // The last part should contain city, state, and zip
-                      const lastPart = addressParts[addressParts.length - 1].trim();
+                      if (addressParts.length >= 2) {
+                        restoredData.city = addressParts[1];
+                      }
                       
-                      // Remove the zip code if found to isolate city and state
-                      const cityStatePart = zipMatch 
-                        ? lastPart.replace(zipRegex, '').trim() 
-                        : lastPart;
-                      
-                      const cityStateParts = cityStatePart.split(' ');
-                      
-                      // City is usually everything before the state
-                      if (cityStateParts.length >= 2) {
-                        // Assume state is the last word before zip (or last word if no zip)
-                        restoredData.state = cityStateParts[cityStateParts.length - 1].trim();
-                        // City is all words before the state
-                        restoredData.city = cityStateParts
-                          .slice(0, cityStateParts.length - 1)
-                          .join(' ')
-                          .trim();
-                      } else if (cityStateParts.length === 1) {
-                        // If only one part, assume it's the city
-                        restoredData.city = cityStateParts[0].trim();
+                      if (addressParts.length >= 3) {
+                        const stateZipPart = addressParts[2].trim();
+                        const stateZipTokens = stateZipPart.split(' ').filter(Boolean);
+                        
+                        if (stateZipTokens.length >= 1) {
+                          restoredData.state = stateZipTokens[0];
+                        }
+                        
+                        if (stateZipTokens.length >= 2) {
+                          restoredData.zipCode = stateZipTokens[1];
+                        }
                       }
                     }
                     
@@ -124,28 +109,28 @@ const Wizard = () => {
                 
                 setFormData(restoredData);
                 
-                // Determine which step to restore to based on the admin configuration
-                // Check if any panel 3 fields have data
-                const hasPanel3Data = Object.entries(formConfig.fields).some(([fieldName, field]) => {
-                  if (field.enabled && field.panel === 3) {
-                    if (fieldName === 'address' && savedData.address) return true;
-                    if (fieldName === 'birthdate' && savedData.birthdate) return true;
-                    if (fieldName === 'aboutYou' && savedData.about_you) return true;
-                  }
+                const panel3Fields = Object.entries(configResponse.data.fields).filter(
+                  ([_, field]) => field.enabled && field.panel === 3
+                );
+                
+                const hasPanel3Data = panel3Fields.some(([fieldName]) => {
+                  if (fieldName === 'address' && savedData.address) return true;
+                  if (fieldName === 'birthdate' && savedData.birthdate) return true;
+                  if (fieldName === 'aboutYou' && savedData.about_you) return true;
                   return false;
                 });
                 
-                // Check if any panel 2 fields have data
-                const hasPanel2Data = Object.entries(formConfig.fields).some(([fieldName, field]) => {
-                  if (field.enabled && field.panel === 2) {
-                    if (fieldName === 'address' && savedData.address) return true;
-                    if (fieldName === 'birthdate' && savedData.birthdate) return true;
-                    if (fieldName === 'aboutYou' && savedData.about_you) return true;
-                  }
+                const panel2Fields = Object.entries(configResponse.data.fields).filter(
+                  ([_, field]) => field.enabled && field.panel === 2
+                );
+                
+                const hasPanel2Data = panel2Fields.some(([fieldName]) => {
+                  if (fieldName === 'address' && savedData.address) return true;
+                  if (fieldName === 'birthdate' && savedData.birthdate) return true;
+                  if (fieldName === 'aboutYou' && savedData.about_you) return true;
                   return false;
                 });
                 
-                // Set the current step based on the data available
                 if (hasPanel3Data) {
                   setCurrentStep(3);
                 } else if (hasPanel2Data) {
@@ -159,7 +144,6 @@ const Wizard = () => {
             }
           } catch (error) {
             console.error('Error fetching saved progress:', error);
-            // Clear localStorage if there was an error (e.g., the form might have been deleted)
             localStorage.removeItem('formId');
             localStorage.removeItem('username');
           }
@@ -172,36 +156,51 @@ const Wizard = () => {
     };
     
     fetchConfigAndProgress();
-  }, [formConfig.fields]); // Added missing dependency
+  }, []);
 
   // Update the combined address field whenever individual address components change
   useEffect(() => {
-    const { streetAddress, city, state, zipCode } = formData;
-    const combinedAddress = [
-      streetAddress,
-      city ? (city + (state || zipCode ? ',' : '')) : '',
-      state,
-      zipCode
-    ].filter(Boolean).join(' ');
+    if (loading) return;
     
-    setFormData(prev => ({
-      ...prev,
-      address: combinedAddress
-    }));
-  }, [formData.streetAddress, formData.city, formData.state, formData.zipCode, formData]); // Added missing dependency
+    const { streetAddress, city, state, zipCode } = formData;
+    
+    if (streetAddress || city || state || zipCode) {
+      let combinedAddress = '';
+      
+      if (streetAddress) {
+        combinedAddress += streetAddress;
+      }
+      
+      if (city) {
+        if (combinedAddress) combinedAddress += ', ';
+        combinedAddress += city;
+      }
+      
+      if (state || zipCode) {
+        if (combinedAddress) combinedAddress += ', ';
+        combinedAddress += [state, zipCode].filter(Boolean).join(' ');
+      }
+      
+      if (combinedAddress !== formData.address) {
+        setFormData(prev => ({
+          ...prev,
+          address: combinedAddress
+        }));
+      }
+    }
+    //eslint-disable-next-line
+  }, [formData.streetAddress, formData.city, formData.state, formData.zipCode, loading]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [name]: value
-    });
+    }));
   };
 
-  // Function to save form data to the database
   const saveFormData = async (isComplete = false) => {
     try {
-      // Prepare form data based on enabled fields only
       const submissionData = {
         username: formData.username,
         password: formData.password,
@@ -285,17 +284,14 @@ const Wizard = () => {
     }
     
     if (currentStep === 3) {
-      // Final validation before submission
       if (hasValidationErrors) {
         alert('Please correct all validation errors before submitting.');
         return;
       }
       
       try {
-        // Mark form as complete in the final submission
         await saveFormData(true);
         
-        // Clear the saved progress since the form is complete
         localStorage.removeItem('formId');
         localStorage.removeItem('username');
         
@@ -317,16 +313,13 @@ const Wizard = () => {
         }
       }
       
-      // Call handleNext which will save and advance
       handleNext();
     }
   };
 
-  // Get today's date in YYYY-MM-DD format for date input max attribute
   const today = new Date().toISOString().split('T')[0];
   
   const validateBirthdate = (date) => {
-    // Return valid if date is empty
     if (!date) {
       return { valid: true, message: '' };
     }
@@ -343,7 +336,6 @@ const Wizard = () => {
       return { valid: false };
     }
     
-    // Additional validation could be added here (e.g., minimum age)
     return { valid: true, message: '' };
   };
   
@@ -513,44 +505,45 @@ const Wizard = () => {
             </div>
           </div>
         );
-      case 2:
-        return (
-          <div className="step-container">
-            <h2>Please fill out the following information:</h2>
-            {Object.entries(formConfig.fields).map(([fieldName, field]) => {
-              if (field.enabled && field.panel === 2) {
-                if (fieldName === 'address') {
-                  return renderField('address', 'Address', 'text');
-                } else if (fieldName === 'birthdate') {
-                  return renderField('birthdate', 'Birthdate', 'date');
-                } else if (fieldName === 'aboutYou') {
-                  return renderField('aboutYou', 'Tell us about yourself', 'textarea');
+        case 2:
+          return (
+            <div className="step-container">
+              <h2>Please fill out the following information:</h2>
+              {Object.entries(formConfig.fields).map(([fieldName, field]) => {
+                if (field.enabled && field.panel === 2) {
+                  if (fieldName === 'address') {
+                    return <React.Fragment key={fieldName}>{renderField('address', 'Address', 'text')}</React.Fragment>;
+                  } else if (fieldName === 'birthdate') {
+                    return <React.Fragment key={fieldName}>{renderField('birthdate', 'Birthdate', 'date')}</React.Fragment>;
+                  } else if (fieldName === 'aboutYou') {
+                    return <React.Fragment key={fieldName}>{renderField('aboutYou', 'Tell us about yourself', 'textarea')}</React.Fragment>;
+                  }
+                  return null;
                 }
                 return null;
-              }
-              return null;
-            })}
-          </div>
-        );
-      case 3:
-        return (
-          <div className="step-container">
-            <h2>Almost there! Just a little more info...</h2>
-            {Object.entries(formConfig.fields).map(([fieldName, field]) => {
-              if (field.enabled && field.panel === 3) {
-                if (fieldName === 'address') {
-                  return renderField('address', 'Address', 'text');
-                } else if (fieldName === 'birthdate') {
-                  return renderField('birthdate', 'Birthdate', 'date');
-                } else if (fieldName === 'aboutYou') {
-                  return renderField('aboutYou', 'Tell us about yourself', 'textarea');
+              })}
+            </div>
+          );
+                
+        case 3:
+          return (
+            <div className="step-container">
+              <h2>Almost there! Just a little more info...</h2>
+              {Object.entries(formConfig.fields).map(([fieldName, field]) => {
+                if (field.enabled && field.panel === 3) {
+                  if (fieldName === 'address') {
+                    return <React.Fragment key={fieldName}>{renderField('address', 'Address', 'text')}</React.Fragment>;
+                  } else if (fieldName === 'birthdate') {
+                    return <React.Fragment key={fieldName}>{renderField('birthdate', 'Birthdate', 'date')}</React.Fragment>;
+                  } else if (fieldName === 'aboutYou') {
+                    return <React.Fragment key={fieldName}>{renderField('aboutYou', 'Tell us about yourself', 'textarea')}</React.Fragment>;
+                  }
+                  return null;
                 }
                 return null;
-              }
-              return null;
-            })}
-          </div>
-        );
+              })}
+            </div>
+          );
       case 4:
         return (
           <div className="step-container thank-you">
