@@ -5,7 +5,7 @@ const TOTAL_STEPS = 4;
 
 const ProgressBar = ({ currentStep }) => {
   const progressPercent = currentStep > 1
-      ? ((currentStep - 1) / (TOTAL_STEPS - 1)) * 100
+      ? (((currentStep*0.95 - 1) / (TOTAL_STEPS - 1)) * 100) + 4
       : 0;
 
   return (

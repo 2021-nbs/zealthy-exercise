@@ -1,7 +1,6 @@
 // src/components/Admin.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-// import axios from 'axios'; // No longer needed directly
 import { fetchFormConfig, updateAdminFormConfig } from '../services/api'; // Use the service
 import LoadingIndicator from './common/LoadingIndicator'; 
 
