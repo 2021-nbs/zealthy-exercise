@@ -4,7 +4,7 @@ import FormField from '../common/FormField';
 import AddressFields from '../common/AddressFields';
 import { validateBirthdate } from '../../utils/helpers';
 
-const StepFields = ({ stepNumber, formData, formConfig, handleInputChange }) => {
+const StepFields = ({ stepNumber, formData, formConfig, handleInputChange, fieldErrors }) => {
   const fieldsToRender = Object.entries(formConfig.fields || {})
     .filter(([_, fieldConfig]) => fieldConfig.enabled && fieldConfig.panel === stepNumber);
 
@@ -23,11 +23,16 @@ const StepFields = ({ stepNumber, formData, formConfig, handleInputChange }) => 
               key={fieldName}
               formData={formData}
               onChange={handleInputChange}
-              required={true} // Assuming address fields are always required if enabled
+              required={true}
+              errors={{
+                streetAddress: fieldErrors.streetAddress,
+                city: fieldErrors.city,
+                state: fieldErrors.state,
+                zipCode: fieldErrors.zipCode
+              }}
             />
           );
         } else if (fieldName === 'birthdate') {
-           const validation = validateBirthdate(formData.birthdate);
           return (
             <FormField
               key={fieldName}
@@ -35,8 +40,8 @@ const StepFields = ({ stepNumber, formData, formConfig, handleInputChange }) => 
               type="date"
               value={formData.birthdate}
               onChange={handleInputChange}
-              required={true} // Assuming required if enabled
-              error={!validation.isValid ? validation.message : ''}
+              required={true}
+              error={fieldErrors.birthdate || ''}
             />
           );
         } else if (fieldName === 'aboutYou') {
@@ -47,7 +52,8 @@ const StepFields = ({ stepNumber, formData, formConfig, handleInputChange }) => 
               type="textarea"
               value={formData.aboutYou}
               onChange={handleInputChange}
-              required={true} // Assuming required if enabled
+              required={true}
+              error={fieldErrors.aboutYou || ''}
             />
           );
         }

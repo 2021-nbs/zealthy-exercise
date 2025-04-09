@@ -539,8 +539,7 @@ const Wizard = () => {
 
       {currentStep < PANEL_STEP_MAP[4] && <ProgressBar currentStep={currentStep} lastDataStep={lastDataStep}/>}
 
-      {/* Display general error message (now used for validation failures too) */}
-      {error && <div className="error-message general-error">{error}</div>}
+      {error && <div className="general-error">{error}</div>}
 
       <div>
         {renderCurrentStep()}
