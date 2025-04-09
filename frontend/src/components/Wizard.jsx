@@ -11,7 +11,8 @@ import {
 import {
   LOCAL_STORAGE_FORM_ID_KEY,
   LOCAL_STORAGE_USERNAME_KEY,
-  LOCAL_STORAGE_CURRENT_STEP_KEY, // <-- Import new key
+  LOCAL_STORAGE_CURRENT_STEP_KEY,
+  LOCAL_STORAGE_FORM_DATA_KEY,
   PANEL_STEP_MAP,
 } from '../constants';
 import {
@@ -26,7 +27,7 @@ import Step1Login from './steps/Step1Login';
 import StepFields from './steps/StepFields';
 import Step4ThankYou from './steps/Step4ThankYou';
 
-const INITIAL_FORM_DATA = {};
+const INITIAL_FORM_DATA = {}; 
 
 const Wizard = () => {
   const navigate = useNavigate();
@@ -44,101 +45,125 @@ const Wizard = () => {
     return Object.values(formConfig.fields).some(
       field => field.enabled && field.panel === stepNum
     );
-  }, [formConfig]); // Depends on formConfig
+  }, [formConfig]);
 
   const clearSavedProgress = () => {
     localStorage.removeItem(LOCAL_STORAGE_FORM_ID_KEY);
     localStorage.removeItem(LOCAL_STORAGE_USERNAME_KEY);
     localStorage.removeItem(LOCAL_STORAGE_CURRENT_STEP_KEY);
+    localStorage.removeItem(LOCAL_STORAGE_FORM_DATA_KEY);
   };
 
+  // Effect to load initial data and restore state
   useEffect(() => {
     const loadInitialData = async () => {
       setLoading(true);
       setError('');
-      let finalInitialStep = PANEL_STEP_MAP[1]; // Default start step
+      let finalInitialStep = PANEL_STEP_MAP[1];
+      let restoredData = null;
+      let source = "fresh";
 
       try {
         const config = await fetchFormConfig();
         setFormConfig(config);
 
+        // --- Attempt to restore from localStorage first ---
+        const savedFormDataString = localStorage.getItem(LOCAL_STORAGE_FORM_DATA_KEY);
         const savedFormId = localStorage.getItem(LOCAL_STORAGE_FORM_ID_KEY);
         const savedUsername = localStorage.getItem(LOCAL_STORAGE_USERNAME_KEY);
         const savedStepString = localStorage.getItem(LOCAL_STORAGE_CURRENT_STEP_KEY);
 
-        if (savedFormId && savedUsername) {
+        if (savedFormDataString) {
+            try {
+                const parsedData = JSON.parse(savedFormDataString);
+                if (parsedData && typeof parsedData === 'object') {
+                    console.log("Restoring formData from localStorage.");
+                    restoredData = parsedData;
+                    setFormData(restoredData); // Set state from local storage
+                    if (savedFormId) setFormId(savedFormId); // Keep formId consistent if available
+                    source = "local";
+                } else {
+                    console.warn("Invalid data found in localStorage formData. Clearing.");
+                    localStorage.removeItem(LOCAL_STORAGE_FORM_DATA_KEY);
+                }
+            } catch (e) {
+                console.error("Error parsing formData from localStorage:", e);
+                localStorage.removeItem(LOCAL_STORAGE_FORM_DATA_KEY);
+            }
+        }
+
+        if (source !== "local" && savedFormId && savedUsername) {
           try {
             const savedSubmission = await fetchFormSubmission(savedFormId);
-
             if (
               savedSubmission &&
               savedSubmission.username === savedUsername &&
-              !savedSubmission.is_complete // Only restore if not completed
+              !savedSubmission.is_complete
             ) {
-              // Restore form data state
+              console.log("Restoring formData from API.");
               const addressParts = parseAddressString(savedSubmission.address);
-              const restoredData = {
+              restoredData = { // Map API data to local state structure
                 username: savedSubmission.username || '',
-                password: '',
-                streetAddress: addressParts.streetAddress,
-                city: addressParts.city,
-                state: addressParts.state,
-                zipCode: addressParts.zipCode,
+                password: '', // Don't restore password
+                streetAddress: addressParts.streetAddress || '',
+                city: addressParts.city || '',
+                state: addressParts.state || '',
+                zipCode: addressParts.zipCode || '',
                 birthdate: savedSubmission.birthdate || '',
                 aboutYou: savedSubmission.about_you || '',
               };
               setFormData(restoredData);
               setFormId(savedFormId);
-
-              // Determine initial step based on data, then check saved step
-              const dataDerivedStep = determineInitialStep(savedSubmission, config);
-              let stepFromStorage = null;
-
-              if (savedStepString) {
-                  const parsedStep = parseInt(savedStepString, 10);
-                  // Validate saved step (must be 1, 2, or 3 for restoration)
-                  if (!isNaN(parsedStep) && parsedStep >= PANEL_STEP_MAP[1] && parsedStep <= PANEL_STEP_MAP[3]) {
-                     stepFromStorage = parsedStep;
-                  } else {
-                     console.warn(`Invalid saved step (${savedStepString}) found in localStorage. Ignoring.`);
-                     localStorage.removeItem(LOCAL_STORAGE_CURRENT_STEP_KEY); // Clear invalid step
-                  }
-              }
-
-              // Prioritize explicitly saved step, otherwise use data-derived step
-              finalInitialStep = stepFromStorage ?? dataDerivedStep;
-
-              console.log(`Restored progress. Data suggests step ${dataDerivedStep}. Explicitly saved step: ${stepFromStorage}. Starting at step: ${finalInitialStep}`);
-
+              source = "api";
             } else {
-              // Mismatch or completed form, clear saved state
-               console.log("Saved form ID/username found, but data mismatch or form completed. Clearing state.");
+              console.log("Saved form ID/username found, but data mismatch or form completed. Clearing state.");
               clearSavedProgress();
-              finalInitialStep = PANEL_STEP_MAP[1]; // Reset to step 1
+              source = "clear";
             }
           } catch (fetchError) {
             console.error('Error fetching saved progress:', fetchError);
             setError('Could not load saved progress. Starting fresh.');
             clearSavedProgress();
-            finalInitialStep = PANEL_STEP_MAP[1]; // Reset to step 1
+            source = "clear";
           }
-        } else {
-            // No saved formId/username, ensure step is cleared too if partially saved
-             clearSavedProgress(); // Ensure all keys are cleared if starting fresh
-             finalInitialStep = PANEL_STEP_MAP[1];
         }
+
+        const dataForStepCheck = restoredData || INITIAL_FORM_DATA;
+        const dataDerivedStep = determineInitialStep(dataForStepCheck, config); // Use potentially restored data
+        let stepFromStorage = null;
+
+        if (savedStepString) {
+            const parsedStep = parseInt(savedStepString, 10);
+            if (!isNaN(parsedStep) && parsedStep >= PANEL_STEP_MAP[1] && parsedStep <= PANEL_STEP_MAP[3]) {
+                stepFromStorage = parsedStep;
+            } else {
+                console.warn(`Invalid saved step (${savedStepString}). Ignoring.`);
+                localStorage.removeItem(LOCAL_STORAGE_CURRENT_STEP_KEY);
+            }
+        }
+
+        finalInitialStep = stepFromStorage ?? dataDerivedStep;
+
+        // If we cleared state or started fresh, ensure we are at step 1
+        if (source === "clear" || source === "fresh") {
+             finalInitialStep = PANEL_STEP_MAP[1];
+             if (source === "fresh") clearSavedProgress(); // Ensure all keys clear if starting completely fresh
+        }
+
+        console.log(`Restoration source: ${source}. Data suggests step ${dataDerivedStep}. Saved step: ${stepFromStorage}. Final step: ${finalInitialStep}`);
+
       } catch (configError) {
         console.error('Error fetching initial data:', configError);
         setError('Failed to load form configuration. Please try again later.');
-        setLoading(false); // Stop loading indicator on config error
-        return; // Stop execution here if config fails
+        setLoading(false);
+        return;
       } finally {
         setCurrentStep(finalInitialStep);
-        if (finalInitialStep > PANEL_STEP_MAP[1]) { // Only save if beyond step 1
+        // Save the determined step back to localStorage (if > 1)
+        if (finalInitialStep > PANEL_STEP_MAP[1] && finalInitialStep < PANEL_STEP_MAP[4]) {
              localStorage.setItem(LOCAL_STORAGE_CURRENT_STEP_KEY, finalInitialStep.toString());
-        } else {
-            // Ensure step is cleared if we ended up back at step 1
-            localStorage.removeItem(LOCAL_STORAGE_CURRENT_STEP_KEY);
+        } else if (finalInitialStep === PANEL_STEP_MAP[1]) {
+             localStorage.removeItem(LOCAL_STORAGE_CURRENT_STEP_KEY); // Clear step if back to 1
         }
         setLoading(false);
       }
@@ -147,99 +172,123 @@ const Wizard = () => {
     loadInitialData();
   }, []); // Runs only on mount
 
-   const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({
-        ...prev,
-        [name]: value,
-        }));
-        if (fieldErrors[name]) {
-        setFieldErrors(prev => ({ ...prev, [name]: '' }));
-        }
-    };
+  useEffect(() => {
+    if (!loading && !isSaving && Object.keys(formData).length > 0) {
+      try {
+        localStorage.setItem(LOCAL_STORAGE_FORM_DATA_KEY, JSON.stringify(formData));
+      } catch (e) {
+        console.error("Error saving form data to localStorage:", e);
+      }
+    }
+  }, [formData, loading, isSaving]);
 
-  // --- Validation ---
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
     const validateStep = (step) => {
         const errors = {};
         let isValid = true;
         if (!formConfig?.fields) return true;
 
         Object.entries(formConfig.fields).forEach(([fieldName, fieldConfig]) => {
-        if (fieldConfig.enabled && fieldConfig.panel <= step) {
-            if (fieldName === 'birthdate' && formData.birthdate) {
+        // Only validate fields up to the *current* step being validated
+        if (fieldConfig.enabled && fieldConfig.panel === step) {
+             // Step 1 Validations
+             if (step === PANEL_STEP_MAP[1]) {
+                if (fieldName === 'username' && !formData.username) { errors.username = 'Username is required.'; isValid = false; }
+                if (fieldName === 'password' && !formData.password) { errors.password = 'Password is required.'; isValid = false; }
+             }
+             // Step 2/3 Validations (Add as needed based on fieldConfig)
+             else if (fieldName === 'birthdate' && formData.birthdate) {
                 const validation = validateBirthdate(formData.birthdate);
                 if (!validation.isValid) {
                     errors.birthdate = validation.message;
                     isValid = false;
                 }
-            }
-            if (step === 1) {
-                if (!formData.username) { errors.username = 'Username is required.'; isValid = false; }
-                if (!formData.password) { errors.password = 'Password is required.'; isValid = false; }
-            }
-            // Add other validations
+             }
         }
         });
         setFieldErrors(errors);
         return isValid;
     };
 
-  // --- Saving Logic ---
   const saveFormData = useCallback(async (isComplete = false) => {
     if (!formConfig?.fields || isSaving) return false;
+    const stepToValidate = currentStep === PANEL_STEP_MAP[4] ? lastDataStep : currentStep; // Validate last data step on submit
+    if (!validateStep(stepToValidate)) {
+        setError("Please correct the validation errors before proceeding.");
+        return false; 
+    }
+
     setIsSaving(true);
     setError('');
 
     const submissionData = {
       username: formData.username,
-      password: formData.password,
       is_complete: isComplete,
     };
+
+     if (formConfig.fields.password?.enabled) {
+        submissionData.password = formData.password; // Include if enabled
+     }
 
     Object.entries(formConfig.fields).forEach(([fieldName, fieldConfig]) => {
       if (fieldConfig.enabled) {
         if (fieldName === 'address') {
           submissionData.address = combineAddressParts(formData);
-        } else if (fieldName === 'birthdate') {
-          if (formData.birthdate) submissionData.birthdate = formData.birthdate;
+        } else if (fieldName === 'birthdate' && formData.birthdate) { // Check if data exists
+           submissionData.birthdate = formData.birthdate;
         } else if (fieldName === 'aboutYou') {
-          submissionData.about_you = formData.aboutYou || '';
+           submissionData.about_you = formData.aboutYou || '';
         }
       }
     });
 
     try {
       let response;
-      if (formId) {
-        response = await updateFormSubmission(formId, submissionData);
+      const currentFormId = formId || localStorage.getItem(LOCAL_STORAGE_FORM_ID_KEY); // Use state or localStorage ID
+
+      if (currentFormId) {
+        response = await updateFormSubmission(currentFormId, submissionData);
       } else {
+        // Only create if username is present (basic check)
+        if (!submissionData.username) throw new Error("Username is required to create a submission.");
         response = await createFormSubmission(submissionData);
         const newFormId = response.id;
         if (newFormId) {
-          setFormId(newFormId);
-          localStorage.setItem(LOCAL_STORAGE_FORM_ID_KEY, newFormId);
-          localStorage.setItem(LOCAL_STORAGE_USERNAME_KEY, formData.username);
+          setFormId(newFormId); // Update state
+          localStorage.setItem(LOCAL_STORAGE_FORM_ID_KEY, newFormId); // Persist ID
+          localStorage.setItem(LOCAL_STORAGE_USERNAME_KEY, formData.username); // Persist username
         } else {
            throw new Error("API did not return a form ID on creation.");
         }
       }
       setIsSaving(false);
+      if (isComplete) {
+           clearSavedProgress();
+      }
       return true; // Success
     } catch (error) {
-      console.error('Error saving form data:', error);
+      console.error('Error saving form data to API:', error);
       setError(`Error saving data: ${error.message || 'Please try again.'}`);
       setIsSaving(false);
       return false; // Failure
     }
-  }, [formConfig, formData, formId, isSaving]);
+  }, [formConfig, formData, formId, isSaving, currentStep]);
 
   const handleNext = async () => {
     if (isSaving) return;
-
-    const stepToValidate = currentStep;
-    if (!validateStep(stepToValidate)) {
-        console.log("Validation failed for step:", stepToValidate, fieldErrors);
-        return;
+    if (!validateStep(currentStep)) {
+        console.log("Validation failed for step:", currentStep, fieldErrors);
+        return; // Stop if current step fields are invalid
     }
 
     let nextStep = currentStep + 1;
@@ -249,19 +298,22 @@ const Wizard = () => {
     }
 
      if (nextStep >= PANEL_STEP_MAP[4]) {
-         handleSubmit(); // Treat as submit if skipping past last step
+         handleSubmit(); // Should trigger submit if next step is Thank You page
          return;
      }
 
-    // Save progress before attempting to navigate
-    const success = await saveFormData(false);
+    const success = await saveFormData(false); // Mark as incomplete save
     if (success) {
       setCurrentStep(nextStep);
-      localStorage.setItem(LOCAL_STORAGE_CURRENT_STEP_KEY, nextStep.toString()); // <-- Save new step
+      localStorage.setItem(LOCAL_STORAGE_CURRENT_STEP_KEY, nextStep.toString()); // Save new step locally
+      setFieldErrors({}); // Clear errors after successful step transition
+    } else {
+        console.log("API save failed, staying on current step.");
     }
   };
 
   const handlePrevious = () => {
+    // No validation or saving needed when going back
     if (currentStep > PANEL_STEP_MAP[1] && !isSaving) {
         let prevStep = currentStep - 1;
         while (prevStep > PANEL_STEP_MAP[1]) {
@@ -269,31 +321,44 @@ const Wizard = () => {
             prevStep--;
         }
       setCurrentStep(prevStep);
-      localStorage.setItem(LOCAL_STORAGE_CURRENT_STEP_KEY, prevStep.toString()); // <-- Save new step
+      localStorage.setItem(LOCAL_STORAGE_CURRENT_STEP_KEY, prevStep.toString());
+      setFieldErrors({}); // Clear errors when moving back
     }
   };
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     if (isSaving) return;
-
-     const stepToValidate = currentStep;
-    if (!validateStep(stepToValidate)) {
-        setError("Please correct the errors before submitting.");
+    const lastEnabledStep = findLastEnabledStep();
+    if (!validateStep(lastEnabledStep)) {
+        setError("Please correct the errors on the relevant step before submitting.");
+        setCurrentStep(lastEnabledStep); // Navigate back to the step with errors
         return;
     }
 
     const success = await saveFormData(true); // Mark as complete
     if (success) {
-      clearSavedProgress(); // Clear all keys on successful submission
-      setCurrentStep(PANEL_STEP_MAP[4]);
+      setCurrentStep(PANEL_STEP_MAP[4]); // Navigate to Thank You
+      setFieldErrors({}); // Clear any residual errors
     }
   };
 
+  // Helper to find the last step with enabled fields (needed for final validation)
+  const findLastEnabledStep = () => {
+     let lastStep = PANEL_STEP_MAP[1];
+     for (let step = PANEL_STEP_MAP[3]; step >= PANEL_STEP_MAP[1]; step--) {
+         if (doesStepHaveEnabledFields(step)) {
+             lastStep = step;
+             break;
+         }
+     }
+     return lastStep;
+  };
+  const lastDataStep = findLastEnabledStep(); // Calculate once
 
   const resetForm = () => {
-    clearSavedProgress(); // Clears formId, username, and currentStep keys
-    setFormData(INITIAL_FORM_DATA);
+    clearSavedProgress(); // Clears all local storage keys
+    setFormData(INITIAL_FORM_DATA); // Reset state
     setFormId(null);
     setCurrentStep(PANEL_STEP_MAP[1]);
     setError('');
@@ -307,16 +372,12 @@ const Wizard = () => {
       case PANEL_STEP_MAP[2]: return <StepFields {...stepProps} stepNumber={2} />;
       case PANEL_STEP_MAP[3]: return <StepFields {...stepProps} stepNumber={3} />;
       case PANEL_STEP_MAP[4]: return <Step4ThankYou onRestart={resetForm} />;
-      default: return <div>Invalid Step</div>;
+      default: return <div>Invalid Step: {currentStep}</div>;
     }
   };
 
-   if (loading) { /* ... loading indicator ... */ }
-   if (!formConfig && !loading) { /* ... config error handling ... */ }
-
-  let lastDataStep = PANEL_STEP_MAP[1];
-  if (formConfig && doesStepHaveEnabledFields(3)) lastDataStep = 3;
-  else if (formConfig && doesStepHaveEnabledFields(2)) lastDataStep = 2;
+   if (loading) { return <div className="wizard-container"><p>Loading form...</p></div>; }
+   if (!formConfig && !loading) { return <div className="wizard-container error-message"><p>Error loading form configuration. Please try refreshing.</p></div>; }
 
   return (
     <div className="wizard-container">
@@ -325,11 +386,10 @@ const Wizard = () => {
         <button onClick={() => navigate('/admin')} className="admin-link">Admin</button>
       </div>
 
-      {currentStep !== PANEL_STEP_MAP[4] && <ProgressBar currentStep={currentStep} />}
+      {currentStep !== PANEL_STEP_MAP[4] && <ProgressBar currentStep={currentStep} lastDataStep={lastDataStep}/>}
 
       {error && <div className="error-message general-error">{error}</div>}
-
-      <form onSubmit={handleSubmit}>
+      <div>
         {renderCurrentStep()}
 
         <div className="buttons-container">
@@ -344,12 +404,12 @@ const Wizard = () => {
             </button>
           )}
           {currentStep === lastDataStep && currentStep < PANEL_STEP_MAP[4] && (
-            <button type="submit" className="btn btn-success" disabled={isSaving}>
+            <button type="button" onClick={handleSubmit} className="btn btn-success" disabled={isSaving}>
               {isSaving ? 'Submitting...' : 'Submit'}
             </button>
           )}
         </div>
-      </form>
+      </div>
     </div>
   );
 };
