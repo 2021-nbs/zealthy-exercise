@@ -2,7 +2,6 @@
 import React from 'react';
 import FormField from '../common/FormField';
 import AddressFields from '../common/AddressFields';
-import { validateBirthdate } from '../../utils/helpers';
 
 const StepFields = ({ stepNumber, formData, formConfig, handleInputChange, fieldErrors }) => {
   const fieldsToRender = Object.entries(formConfig.fields || {})
@@ -16,7 +15,7 @@ const StepFields = ({ stepNumber, formData, formConfig, handleInputChange, field
   return (
     <div className="step-container">
        <h2>{stepTitles[stepNumber]}</h2>
-      {fieldsToRender.map(([fieldName, fieldConfig]) => {
+      {fieldsToRender.map(([fieldName]) => {
         if (fieldName === 'address') {
           return (
             <AddressFields
