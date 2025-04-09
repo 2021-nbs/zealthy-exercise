@@ -2,6 +2,7 @@
 import React from 'react';
 import FormField from '../common/FormField';
 import AddressFields from '../common/AddressFields';
+import { getTodayDateString } from '../../utils/helpers'; // Add this import
 
 const StepFields = ({ stepNumber, formData, formConfig, handleInputChange, fieldErrors }) => {
   const fieldsToRender = Object.entries(formConfig.fields || {})
@@ -41,7 +42,7 @@ const StepFields = ({ stepNumber, formData, formConfig, handleInputChange, field
               onChange={handleInputChange}
               required={true}
               error={fieldErrors.birthdate || ''}
-              max={getTodayDateString()} // Add max attribute to prevent future dates
+              max={getTodayDateString()} // Using the imported function
             />
           );
         } else if (fieldName === 'aboutYou') {
