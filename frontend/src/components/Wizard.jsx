@@ -255,7 +255,6 @@ const Wizard = () => {
     console.log(`Validating step ${step}`);
     Object.entries(formConfig.fields).forEach(([fieldName, fieldConfig]) => {
       if (fieldConfig.enabled && fieldConfig.panel === step) {
-         const value = formData[fieldName]; // Check the actual field name mapping if needed
 
          // Example: Generic required check (adjust based on actual config if needed)
          // if (fieldConfig.required && !value) {
