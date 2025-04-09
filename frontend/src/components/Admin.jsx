@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 // import axios from 'axios'; // No longer needed directly
 import { fetchFormConfig, updateAdminFormConfig } from '../services/api'; // Use the service
-import { API_BASE_URL } from '../constants'; // Use if needed for links etc.
 import LoadingIndicator from './common/LoadingIndicator'; // Reuse common component
 
 // Default config structure if fetch fails or for initial state

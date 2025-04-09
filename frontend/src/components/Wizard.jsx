@@ -210,52 +210,60 @@ const Wizard = () => {
     }
   }, [formConfig, formData, formId, isSaving]); // Dependencies for useCallback
 
-
+  // Helper function to check if a given step number has any enabled fields
+  const doesStepHaveEnabledFields = (stepNum) => {
+    // Ensure formConfig and fields are loaded before checking
+    if (!formConfig?.fields) {
+      console.warn("Attempted to check fields before formConfig loaded.");
+      return false; // Or true depending on desired default behavior if config isn't ready
+    }
+    return Object.values(formConfig.fields).some(
+      field => field.enabled && field.panel === stepNum
+    );
+  };
   // --- Navigation Logic ---
   const handleNext = async () => {
     if (isSaving) return;
 
-    const stepToValidate = currentStep; // Validate the step we are leaving
+    const stepToValidate = currentStep;
     if (!validateStep(stepToValidate)) {
         console.log("Validation failed for step:", stepToValidate, fieldErrors);
-        return; // Stop if validation fails
+        return;
     }
 
     // Determine the next logical step based on config
     let nextStep = currentStep + 1;
     // Skip step 2 or 3 if no fields are enabled for them
     while (nextStep < PANEL_STEP_MAP[4]) {
-      const hasFields = Object.values(formConfig?.fields ?? {}).some(
-        f => f.enabled && f.panel === nextStep
-      );
-      if (hasFields) break; // Found a step with fields
+      // Use the helper function instead of defining one inline
+      if (doesStepHaveEnabledFields(nextStep)) {
+          break; // Found a step with fields
+      }
       nextStep++;
     }
 
      if (nextStep >= PANEL_STEP_MAP[4]) {
-         // If we would skip past step 3, treat as submit
          handleSubmit();
          return;
      }
 
-    // Save progress before moving
     const success = await saveFormData(false);
     if (success) {
       setCurrentStep(nextStep);
-    } else {
-      // Error is set within saveFormData
     }
   };
 
   const handlePrevious = () => {
     if (currentStep > PANEL_STEP_MAP[1] && !isSaving) {
-         // Determine the previous logical step based on config
+        // Determine the previous logical step based on config
         let prevStep = currentStep - 1;
         while (prevStep > PANEL_STEP_MAP[1]) { // Don't skip step 1
-            const hasFields = Object.values(formConfig?.fields ?? {}).some(
-            f => f.enabled && f.panel === prevStep
-            );
-            if (hasFields) break; // Found a step with fields
+            // **** MODIFICATION HERE ****
+            // Use the helper function instead of defining one inline
+            if (doesStepHaveEnabledFields(prevStep)) {
+                break; // Found a step with fields
+            }
+            // **** END MODIFICATION ****
             prevStep--;
         }
       setCurrentStep(prevStep);
