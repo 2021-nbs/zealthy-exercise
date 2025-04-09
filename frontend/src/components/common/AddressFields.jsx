@@ -1,41 +1,42 @@
+// src/components/common/AddressFields.jsx
 import React from 'react';
 import FormField from './FormField';
 
-const AddressFields = ({ formData, onChange, required = true }) => {
+const AddressFields = ({ formData, onChange, required, errors = {} }) => {
   return (
     <div className="address-fields">
-      <h3>Address Information</h3>
       <FormField
         name="streetAddress"
-        value={formData.streetAddress}
+        label="Street Address"
+        value={formData.streetAddress || ''}
         onChange={onChange}
         required={required}
+        error={errors?.streetAddress || ''}
       />
       <FormField
         name="city"
-        value={formData.city}
+        label="City"
+        value={formData.city || ''}
         onChange={onChange}
         required={required}
+        error={errors?.city || ''}
       />
-      <div className="address-row">
-        <div className="form-group state-field">
-          <FormField
-            name="state"
-            value={formData.state}
-            onChange={onChange}
-            required={required}
-          />
-        </div>
-        <div className="form-group zip-field">
-          <FormField
-            name="zipCode"
-            type="text"
-            value={formData.zipCode}
-            onChange={onChange}
-            required={required}
-          />
-        </div>
-      </div>
+      <FormField
+        name="state"
+        label="State"
+        value={formData.state || ''}
+        onChange={onChange}
+        required={required}
+        error={errors?.state || ''}
+      />
+      <FormField
+        name="zipCode"
+        label="Zip Code"
+        value={formData.zipCode || ''}
+        onChange={onChange}
+        required={required}
+        error={errors?.zipCode || ''}
+      />
     </div>
   );
 };

@@ -226,65 +226,59 @@ const Wizard = () => {
     }
   };
 
-  // --- MODIFICATION START: Enhanced validateStep ---
-  const validateStep = useCallback((step) => {
-    const errors = {};
-    let isValid = true;
-    if (!formConfig?.fields) {
-        console.warn("Validation skipped: formConfig not loaded.");
-        return true; // Can't validate without config
-    }
+  // Update the validateStep function in Wizard.jsx
+const validateStep = useCallback((step) => {
+  const errors = {};
+  let isValid = true;
+  if (!formConfig?.fields) {
+      console.warn("Validation skipped: formConfig not loaded.");
+      return true; // Can't validate without config
+  }
 
-    console.log(`Validating step ${step} for required fields`);
-    Object.entries(formConfig.fields).forEach(([fieldName, fieldConfig]) => {
-      // Only validate fields that are ENABLED for the CURRENT step being validated
-      if (fieldConfig.enabled && fieldConfig.panel === step) {
+  console.log(`Validating step ${step} for required fields`);
+  Object.entries(formConfig.fields).forEach(([fieldName, fieldConfig]) => {
+    // Only validate fields that are ENABLED for the CURRENT step being validated
+    if (fieldConfig.enabled && fieldConfig.panel === step) {
 
-        // Handle specific field names and their corresponding formData keys
-        if (fieldName === 'username') {
-          if (isBlank(formData.username)) { errors.username = 'Username is required.'; isValid = false; }
-        } else if (fieldName === 'password') {
-           if (isBlank(formData.password)) { errors.password = 'Password is required.'; isValid = false; }
-        } else if (fieldName === 'address') {
-          // If 'address' is enabled, check all its constituent parts
-          if (isBlank(formData.streetAddress)) { errors.streetAddress = 'Street Address is required.'; isValid = false; }
-          if (isBlank(formData.city)) { errors.city = 'City is required.'; isValid = false; }
-          if (isBlank(formData.state)) { errors.state = 'State is required.'; isValid = false; }
-          if (isBlank(formData.zipCode)) { errors.zipCode = 'Zip Code is required.'; isValid = false; }
-        } else if (fieldName === 'birthdate') {
-          // Check if required first
-          if (isBlank(formData.birthdate)) {
-            errors.birthdate = 'Birthdate is required.';
+      // Handle specific field names and their corresponding formData keys
+      if (fieldName === 'username') {
+        if (isBlank(formData.username)) { errors.username = 'Username is required.'; isValid = false; }
+      } else if (fieldName === 'password') {
+         if (isBlank(formData.password)) { errors.password = 'Password is required.'; isValid = false; }
+      } else if (fieldName === 'address') {
+        // If 'address' is enabled, check all its constituent parts with specific error messages
+        if (isBlank(formData.streetAddress)) { errors.streetAddress = 'Street Address is required.'; isValid = false; }
+        if (isBlank(formData.city)) { errors.city = 'City is required.'; isValid = false; }
+        if (isBlank(formData.state)) { errors.state = 'State is required.'; isValid = false; }
+        if (isBlank(formData.zipCode)) { errors.zipCode = 'Zip Code is required.'; isValid = false; }
+      } else if (fieldName === 'birthdate') {
+        // Check if required first
+        if (isBlank(formData.birthdate)) {
+          errors.birthdate = 'Birthdate is required.';
+          isValid = false;
+        } else {
+          // If not blank, perform existing format validation
+          const validation = validateBirthdate(formData.birthdate);
+          if (!validation.isValid) {
+            // Use the specific validation error message from the helper function
+            errors.birthdate = validation.message;
             isValid = false;
-          } else {
-            // If not blank, perform existing format validation
-            const validation = validateBirthdate(formData.birthdate);
-            if (!validation.isValid) {
-              // Use the more specific format error message if format is wrong
-              errors.birthdate = validation.message;
-              isValid = false;
-            }
           }
-        } else if (fieldName === 'aboutYou') {
-           // Use fieldName for formData key here
-           if (isBlank(formData.aboutYou)) { errors.aboutYou = 'About You is required.'; isValid = false; }
         }
-        // Add checks for any other potential fields configured in Admin.jsx here
-        // else if (fieldName === 'someOtherField') {
-        //   if (isBlank(formData.someOtherField)) { errors.someOtherField = 'Some Other Field is required.'; isValid = false; }
-        // }
+      } else if (fieldName === 'aboutYou') {
+         // Use fieldName for formData key here
+         if (isBlank(formData.aboutYou)) { errors.aboutYou = 'About You is required.'; isValid = false; }
       }
-    });
-
-    if (!isValid) {
-        console.log("Validation failed (required fields check):", errors);
-        // Optional: Set a general error message too?
-        // setError("Please fill in all required fields for this step.");
+      // Add checks for any other potential fields configured in Admin.jsx here
     }
-    setFieldErrors(errors); // Update field errors state
-    return isValid;
-  }, [formConfig, formData]); // Depends on config and current data
-  // --- MODIFICATION END ---
+  });
+
+  if (!isValid) {
+      console.log("Validation failed (required fields check):", errors);
+  }
+  setFieldErrors(errors); // Update field errors state
+  return isValid;
+}, [formConfig, formData]);
 
 
   const findLastEnabledStep = useCallback(() => {

@@ -1,37 +1,45 @@
+// src/components/common/FormField.jsx
 import React from 'react';
-import { FIELD_LABELS } from '../../constants';
-import { getTodayDateString } from '../../utils/helpers';
 
 const FormField = ({
   name,
+  label,
   type = 'text',
   value,
   onChange,
-  required = true,
-  error = '',
-  rows = 5, // for textarea
+  required = false,
+  error = ''
 }) => {
-  const label = FIELD_LABELS[name] || name;
-  const inputProps = {
-    id: name,
-    name: name,
-    value: value || '', // Ensure controlled component
-    onChange: onChange,
-    required: required,
-  };
-
+  // Generate a label from the name if not provided
+  const fieldLabel = label || name.charAt(0).toUpperCase() + name.slice(1).replace(/([A-Z])/g, ' $1');
+  
   return (
-    <div className={`form-group ${error ? 'has-error' : ''}`}>
-      <label htmlFor={name}>{label}</label>
+    <div className="form-group">
+      <label htmlFor={name}>
+        {fieldLabel}{required && <span className="required-mark">*</span>}
+      </label>
+      
       {type === 'textarea' ? (
-        <textarea {...inputProps} rows={rows}></textarea>
+        <textarea
+          id={name}
+          name={name}
+          value={value || ''}
+          onChange={onChange}
+          className={error ? 'input-error' : ''}
+          required={required}
+        />
       ) : (
         <input
+          id={name}
           type={type}
-          {...inputProps}
-          max={type === 'date' ? getTodayDateString() : undefined}
+          name={name}
+          value={value || ''}
+          onChange={onChange}
+          className={error ? 'input-error' : ''}
+          required={required}
         />
       )}
+      
       {error && <div className="field-error">{error}</div>}
     </div>
   );
