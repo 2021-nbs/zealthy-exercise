@@ -36,7 +36,8 @@ const StepFields = ({ stepNumber, formData, formConfig, handleInputChange, field
             <FormField
               key={fieldName}
               name="birthdate"
-              type="date"
+              type="text" // Changed from "date" to "text"
+              placeholder="MM/DD/YYYY" // Add a placeholder to guide the user
               value={formData.birthdate}
               onChange={handleInputChange}
               required={true}

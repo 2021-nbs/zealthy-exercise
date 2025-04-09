@@ -50,7 +50,7 @@ export const parseAddressString = (addressString) => {
   
   /**
    * Validates if a date string represents a date that is not in the future.
-   * @param {string} dateString - e.g., "YYYY-MM-DD"
+   * @param {string} dateString 
    * @returns {{ isValid: boolean, message: string }}
    */
   export const validateBirthdate = (birthdate) => {
@@ -59,15 +59,28 @@ export const parseAddressString = (addressString) => {
       return { isValid: false, message: "Birthdate is required." };
     }
   
-    // Check if format is valid
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/; // Format: YYYY-MM-DD
+    // Check if format is valid for MM/DD/YYYY
+    const dateRegex = /^(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\/\d{4}$/; // Format: MM/DD/YYYY
     if (!dateRegex.test(birthdate)) {
-      return { isValid: false, message: "Birthdate must be in YYYY-MM-DD format." };
+      return { isValid: false, message: "Birthdate must be in MM/DD/YYYY format." };
     }
   
+    // Parse MM/DD/YYYY to a date object
+    const [month, day, year] = birthdate.split('/').map(Number);
+    const date = new Date(year, month - 1, day); // month is 0-indexed in JS Date
+  
     // Check if date is valid (not Feb 30, etc.)
-    const date = new Date(birthdate);
     if (isNaN(date.getTime())) {
+      return { isValid: false, message: "Invalid date. Please check month and day values." };
+    }
+  
+    // Check if the entered date parts match what JavaScript parsed
+    // This catches cases like 02/31/2023 which JS converts to 03/03/2023
+    const parsedYear = date.getFullYear();
+    const parsedMonth = date.getMonth() + 1; // JS months are 0-indexed
+    const parsedDay = date.getDate();
+    
+    if (year !== parsedYear || month !== parsedMonth || day !== parsedDay) {
       return { isValid: false, message: "Invalid date. Please check month and day values." };
     }
   
@@ -76,17 +89,6 @@ export const parseAddressString = (addressString) => {
     today.setHours(0, 0, 0, 0); // Set to beginning of day for fair comparison
     if (date > today) {
       return { isValid: false, message: "Birthdate cannot be in the future." };
-    }
-  
-    // Check if the entered date parts match what JavaScript parsed
-    // This catches cases like 2023-02-31 which JS converts to 2023-03-03
-    const [year, month, day] = birthdate.split('-').map(Number);
-    const parsedYear = date.getFullYear();
-    const parsedMonth = date.getMonth() + 1; // JS months are 0-indexed
-    const parsedDay = date.getDate();
-    
-    if (year !== parsedYear || month !== parsedMonth || day !== parsedDay) {
-      return { isValid: false, message: "Invalid date. Please check month and day values." };
     }
   
     // All checks passed
@@ -122,4 +124,10 @@ export const parseAddressString = (addressString) => {
   /**
    * Gets today's date in YYYY-MM-DD format for the max attribute.
    */
-  export const getTodayDateString = () => new Date().toISOString().split('T')[0];
+  export const getTodayDateString = () => {
+    const today = new Date();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const year = today.getFullYear();
+    return `${month}/${day}/${year}`;
+  };
