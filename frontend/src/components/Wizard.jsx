@@ -1,8 +1,7 @@
 // src/components/Wizard.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  fetchFormConfig,
+import {fetchFormConfig,
   fetchFormSubmission,
   createFormSubmission,
   updateFormSubmission,
@@ -207,7 +206,6 @@ const Wizard = () => {
     }
   };
 
-// Update the validateStep function in Wizard.jsx
 const validateStep = useCallback((step) => {
   const errors = {};
   let isValid = true;
@@ -224,32 +222,27 @@ const validateStep = useCallback((step) => {
       } else if (fieldName === 'password') {
          if (isBlank(formData.password)) { errors.password = 'Password is required.'; isValid = false; }
       } else if (fieldName === 'address') {
-        // If 'address' is enabled, check all its constituent parts with specific error messages
         if (isBlank(formData.streetAddress)) { errors.streetAddress = 'Street Address is required.'; isValid = false; }
         if (isBlank(formData.city)) { errors.city = 'City is required.'; isValid = false; }
         if (isBlank(formData.state)) { errors.state = 'State is required.'; isValid = false; }
         if (isBlank(formData.zipCode)) { errors.zipCode = 'Zip Code is required.'; isValid = false; }
       } else if (fieldName === 'birthdate') {
-        // Check if required first
         if (isBlank(formData.birthdate)) {
           errors.birthdate = 'Birthdate is required.';
           isValid = false;
         } else {
-          // If not blank, perform existing format validation
           const validation = validateBirthdate(formData.birthdate);
           if (!validation.isValid) {
-            // Use the specific validation error message from the helper function
             errors.birthdate = validation.message;
             isValid = false;
           }
         }
       } else if (fieldName === 'aboutYou') {
-         // Use fieldName for formData key here
          if (isBlank(formData.aboutYou)) { errors.aboutYou = 'About You is required.'; isValid = false; }
       }
     }
   });
-  setFieldErrors(errors); // Update field errors state
+  setFieldErrors(errors); 
   return isValid;
 }, [formConfig, formData]);
 
@@ -323,7 +316,7 @@ const validateStep = useCallback((step) => {
         }
       }
       setIsSaving(false);
-
+      
       if (isComplete) {
            clearSavedProgress();
       }
@@ -365,7 +358,6 @@ const validateStep = useCallback((step) => {
       if (doesStepHaveEnabledFields(nextStep)) break;
       nextStep++;
     }
-
      if (nextStep >= PANEL_STEP_MAP[4]) {
          handleSubmit();
          return;
@@ -399,7 +391,6 @@ const validateStep = useCallback((step) => {
     if (!validateStep(lastDataStep)) {
         setError("Please correct the errors indicated below before submitting.");
         if (currentStep !== lastDataStep) {
-             console.log(`Validation failed on step ${lastDataStep}, navigating user there from ${currentStep}.`);
              setCurrentStep(lastDataStep);
              localStorage.setItem(LOCAL_STORAGE_CURRENT_STEP_KEY, lastDataStep.toString());
         }
@@ -407,7 +398,6 @@ const validateStep = useCallback((step) => {
     }
     // Clear general error if validation passes
     setError('');
-
     const success = await saveFormData(true);
 
     if (success) {
@@ -459,7 +449,6 @@ const validateStep = useCallback((step) => {
       </div>
 
       {currentStep < PANEL_STEP_MAP[4] && <ProgressBar currentStep={currentStep} lastDataStep={lastDataStep}/>}
-
       {error && <div className="general-error">{error}</div>}
 
       <div>

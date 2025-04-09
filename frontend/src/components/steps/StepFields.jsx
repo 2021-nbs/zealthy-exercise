@@ -2,7 +2,7 @@
 import React from 'react';
 import FormField from '../common/FormField';
 import AddressFields from '../common/AddressFields';
-import { getTodayDateString } from '../../utils/helpers'; // Add this import
+import { getTodayDateString } from '../../utils/helpers'; 
 
 const StepFields = ({ stepNumber, formData, formConfig, handleInputChange, fieldErrors }) => {
   const fieldsToRender = Object.entries(formConfig.fields || {})
