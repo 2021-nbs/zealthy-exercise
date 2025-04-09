@@ -1,10 +1,9 @@
 // src/components/common/ProgressBar.jsx
 import React from 'react';
 
-const TOTAL_STEPS = 4; // Including Thank You
+const TOTAL_STEPS = 4;
 
 const ProgressBar = ({ currentStep }) => {
-  // Calculate progress percentage slightly differently to ensure it reaches 100% at step 4 visually
   const progressPercent = currentStep > 1
       ? ((currentStep - 1) / (TOTAL_STEPS - 1)) * 100
       : 0;

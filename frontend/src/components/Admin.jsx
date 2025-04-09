@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 // import axios from 'axios'; // No longer needed directly
 import { fetchFormConfig, updateAdminFormConfig } from '../services/api'; // Use the service
-import LoadingIndicator from './common/LoadingIndicator'; // Reuse common component
+import LoadingIndicator from './common/LoadingIndicator'; 
 
 // Default config structure if fetch fails or for initial state
 const DEFAULT_FORM_CONFIG = {
@@ -49,8 +49,6 @@ const Admin = () => {
 
     loadConfig();
   }, []);
-
-  // handleToggleChange and handlePanelChange remain the same
 
   const handleToggleChange = (field) => {
     setFormConfig(prevConfig => ({
@@ -104,27 +102,6 @@ const Admin = () => {
       setValidationError('At least one field (Address, Birthdate, or About You) must be enabled.');
       return false;
     }
-
-    // Original checks (now safer)
-    if (!hasPanel2Field && hasPanel3Field) {
-         // Allow if only panel 3 has fields, but maybe warn? Or adjust logic based on desired behavior.
-         // For now, let's require panel 2 if panel 3 is used, or enforce *some* field exists if *any* are enabled.
-         // Let's stick to the original requirement for simplicity:
-          // setValidationError('Panel 2 must have at least one field if Panel 3 is used.');
-         // return false;
-         // --- OR --- based on original code, maybe it means EACH panel must have >=1 if *any* field is enabled?
-          // setValidationError('Panel 2 must have at least one enabled field.');
-          // return false; // Let's assume this interpretation
-    }
-     if (!hasPanel3Field && hasPanel2Field) {
-         // Similar logic - depends on exact requirement. Assuming each needs one IF fields are enabled.
-         // setValidationError('Panel 3 must have at least one enabled field.');
-         // return false;
-     }
-
-     // Let's refine the original check: If *any* field is enabled, then *both* panel 2 and 3 must have *at least one* assigned (even if disabled)?
-     // Or just that the *enabled* fields ensure each panel has content? The latter seems more likely.
-     // Reverting to original interpretation based on the code provided:
 
      if (hasAnyEnabledField && !hasPanel2Field) {
        setValidationError('Configuration invalid: Panel 2 must have at least one *enabled* field.');
@@ -196,7 +173,6 @@ const Admin = () => {
       <div className="header">
         <h1>Zealthy Admin Configuration</h1>
         <div className="admin-nav">
-          {/* Consider using Link from react-router-dom if /data is a route */}
           <a href="/data" className="nav-link">View Submissions Data</a>
           <button
             onClick={navigateToWizard}
@@ -298,7 +274,7 @@ const Admin = () => {
             </tbody>
           </table>
 
-          {/* Panel Preview Logic remains the same, but ensure fields exist */}
+          {}
           <div className="panel-preview">
              <div className="panel-box">
                <h3>Panel 2 Preview</h3>

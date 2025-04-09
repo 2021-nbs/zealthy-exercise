@@ -11,6 +11,7 @@ import {
 import {
   LOCAL_STORAGE_FORM_ID_KEY,
   LOCAL_STORAGE_USERNAME_KEY,
+  LOCAL_STORAGE_CURRENT_STEP_KEY, // <-- Import new key
   PANEL_STEP_MAP,
 } from '../constants';
 import {
@@ -21,45 +22,49 @@ import {
 } from '../utils/helpers';
 
 import ProgressBar from './common/ProgressBar';
-import LoadingIndicator from './common/LoadingIndicator';
 import Step1Login from './steps/Step1Login';
-import StepFields from './steps/StepFields'; // Reusable for step 2 & 3
+import StepFields from './steps/StepFields';
 import Step4ThankYou from './steps/Step4ThankYou';
 
-const INITIAL_FORM_DATA = {
-  username: '',
-  password: '',
-  // address: '', // We will derive this only when saving
-  streetAddress: '',
-  city: '',
-  state: '',
-  zipCode: '',
-  birthdate: '',
-  aboutYou: '',
-};
+const INITIAL_FORM_DATA = {};
 
 const Wizard = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(PANEL_STEP_MAP[1]);
   const [formId, setFormId] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(''); // For general errors
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
-  const [formConfig, setFormConfig] = useState(null); // Initialize as null
+  const [formConfig, setFormConfig] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState({}); // For field-level validation
+  const [fieldErrors, setFieldErrors] = useState({});
 
-  // --- Data Fetching and Initialization ---
+  const doesStepHaveEnabledFields = useCallback((stepNum) => {
+    if (!formConfig?.fields) return false;
+    return Object.values(formConfig.fields).some(
+      field => field.enabled && field.panel === stepNum
+    );
+  }, [formConfig]); // Depends on formConfig
+
+  const clearSavedProgress = () => {
+    localStorage.removeItem(LOCAL_STORAGE_FORM_ID_KEY);
+    localStorage.removeItem(LOCAL_STORAGE_USERNAME_KEY);
+    localStorage.removeItem(LOCAL_STORAGE_CURRENT_STEP_KEY);
+  };
+
   useEffect(() => {
     const loadInitialData = async () => {
       setLoading(true);
       setError('');
+      let finalInitialStep = PANEL_STEP_MAP[1]; // Default start step
+
       try {
         const config = await fetchFormConfig();
         setFormConfig(config);
 
         const savedFormId = localStorage.getItem(LOCAL_STORAGE_FORM_ID_KEY);
         const savedUsername = localStorage.getItem(LOCAL_STORAGE_USERNAME_KEY);
+        const savedStepString = localStorage.getItem(LOCAL_STORAGE_CURRENT_STEP_KEY);
 
         if (savedFormId && savedUsername) {
           try {
@@ -68,40 +73,73 @@ const Wizard = () => {
             if (
               savedSubmission &&
               savedSubmission.username === savedUsername &&
-              !savedSubmission.is_complete
+              !savedSubmission.is_complete // Only restore if not completed
             ) {
-              // Restore state
+              // Restore form data state
               const addressParts = parseAddressString(savedSubmission.address);
               const restoredData = {
                 username: savedSubmission.username || '',
-                password: '', // Don't restore password
+                password: '',
                 streetAddress: addressParts.streetAddress,
                 city: addressParts.city,
                 state: addressParts.state,
                 zipCode: addressParts.zipCode,
                 birthdate: savedSubmission.birthdate || '',
-                aboutYou: savedSubmission.about_you || '', // Map snake_case
+                aboutYou: savedSubmission.about_you || '',
               };
               setFormData(restoredData);
               setFormId(savedFormId);
-              const initialStep = determineInitialStep(savedSubmission, config);
-              setCurrentStep(initialStep);
-              console.log('Restored form progress to step:', initialStep, restoredData);
+
+              // Determine initial step based on data, then check saved step
+              const dataDerivedStep = determineInitialStep(savedSubmission, config);
+              let stepFromStorage = null;
+
+              if (savedStepString) {
+                  const parsedStep = parseInt(savedStepString, 10);
+                  // Validate saved step (must be 1, 2, or 3 for restoration)
+                  if (!isNaN(parsedStep) && parsedStep >= PANEL_STEP_MAP[1] && parsedStep <= PANEL_STEP_MAP[3]) {
+                     stepFromStorage = parsedStep;
+                  } else {
+                     console.warn(`Invalid saved step (${savedStepString}) found in localStorage. Ignoring.`);
+                     localStorage.removeItem(LOCAL_STORAGE_CURRENT_STEP_KEY); // Clear invalid step
+                  }
+              }
+
+              // Prioritize explicitly saved step, otherwise use data-derived step
+              finalInitialStep = stepFromStorage ?? dataDerivedStep;
+
+              console.log(`Restored progress. Data suggests step ${dataDerivedStep}. Explicitly saved step: ${stepFromStorage}. Starting at step: ${finalInitialStep}`);
+
             } else {
-              // Data mismatch or form completed, clear saved state
+              // Mismatch or completed form, clear saved state
+               console.log("Saved form ID/username found, but data mismatch or form completed. Clearing state.");
               clearSavedProgress();
+              finalInitialStep = PANEL_STEP_MAP[1]; // Reset to step 1
             }
           } catch (fetchError) {
             console.error('Error fetching saved progress:', fetchError);
             setError('Could not load saved progress. Starting fresh.');
-            clearSavedProgress(); // Clear potentially invalid keys
+            clearSavedProgress();
+            finalInitialStep = PANEL_STEP_MAP[1]; // Reset to step 1
           }
+        } else {
+            // No saved formId/username, ensure step is cleared too if partially saved
+             clearSavedProgress(); // Ensure all keys are cleared if starting fresh
+             finalInitialStep = PANEL_STEP_MAP[1];
         }
       } catch (configError) {
         console.error('Error fetching initial data:', configError);
         setError('Failed to load form configuration. Please try again later.');
-        // Keep loading true or handle error state appropriately
+        setLoading(false); // Stop loading indicator on config error
+        return; // Stop execution here if config fails
       } finally {
+        setCurrentStep(finalInitialStep);
+        if (finalInitialStep > PANEL_STEP_MAP[1]) { // Only save if beyond step 1
+             localStorage.setItem(LOCAL_STORAGE_CURRENT_STEP_KEY, finalInitialStep.toString());
+        } else {
+            // Ensure step is cleared if we ended up back at step 1
+            localStorage.removeItem(LOCAL_STORAGE_CURRENT_STEP_KEY);
+        }
         setLoading(false);
       }
     };
@@ -109,77 +147,64 @@ const Wizard = () => {
     loadInitialData();
   }, []); // Runs only on mount
 
-  // --- Input Handling ---
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-    // Clear error for this field on change
-    if (fieldErrors[name]) {
-      setFieldErrors(prev => ({ ...prev, [name]: '' }));
-    }
-  };
+   const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+        }));
+        if (fieldErrors[name]) {
+        setFieldErrors(prev => ({ ...prev, [name]: '' }));
+        }
+    };
 
   // --- Validation ---
-  const validateStep = (step) => {
-    const errors = {};
-    let isValid = true;
+    const validateStep = (step) => {
+        const errors = {};
+        let isValid = true;
+        if (!formConfig?.fields) return true;
 
-    if (!formConfig?.fields) return true; // Cannot validate without config
-
-    Object.entries(formConfig.fields).forEach(([fieldName, fieldConfig]) => {
-      // Validate only fields relevant to the current or previous steps
-      if (fieldConfig.enabled && fieldConfig.panel <= step) {
-        // Specific Validations
-        if (fieldName === 'birthdate' && formData.birthdate) {
-          const validation = validateBirthdate(formData.birthdate);
-          if (!validation.isValid) {
-            errors.birthdate = validation.message;
-            isValid = false;
-          }
+        Object.entries(formConfig.fields).forEach(([fieldName, fieldConfig]) => {
+        if (fieldConfig.enabled && fieldConfig.panel <= step) {
+            if (fieldName === 'birthdate' && formData.birthdate) {
+                const validation = validateBirthdate(formData.birthdate);
+                if (!validation.isValid) {
+                    errors.birthdate = validation.message;
+                    isValid = false;
+                }
+            }
+            if (step === 1) {
+                if (!formData.username) { errors.username = 'Username is required.'; isValid = false; }
+                if (!formData.password) { errors.password = 'Password is required.'; isValid = false; }
+            }
+            // Add other validations
         }
-        // Add other field validations here if needed (e.g., required for step 1)
-        if (step === 1) {
-           if (!formData.username) { errors.username = 'Username is required.'; isValid = false; }
-           if (!formData.password) { errors.password = 'Password is required.'; isValid = false; }
-        }
-      }
-    });
-
-    setFieldErrors(errors);
-    return isValid;
-  };
+        });
+        setFieldErrors(errors);
+        return isValid;
+    };
 
   // --- Saving Logic ---
   const saveFormData = useCallback(async (isComplete = false) => {
-    if (!formConfig?.fields || isSaving) return; // Prevent saving without config or during save
-
+    if (!formConfig?.fields || isSaving) return false;
     setIsSaving(true);
-    setError(''); // Clear previous general errors
+    setError('');
 
-    // Prepare data payload, only include enabled fields
     const submissionData = {
       username: formData.username,
-      // Password might not need to be saved on every step, only initially?
-      // Consider API requirements. Let's include it for now as per original.
-      password: formData.password, // BE CAREFUL WITH PASSWORD HANDLING
+      password: formData.password,
       is_complete: isComplete,
     };
 
     Object.entries(formConfig.fields).forEach(([fieldName, fieldConfig]) => {
       if (fieldConfig.enabled) {
         if (fieldName === 'address') {
-          // Combine parts only if the address field itself is enabled
           submissionData.address = combineAddressParts(formData);
         } else if (fieldName === 'birthdate') {
-          // Only include if it has a value
           if (formData.birthdate) submissionData.birthdate = formData.birthdate;
         } else if (fieldName === 'aboutYou') {
-          submissionData.about_you = formData.aboutYou || ''; // Map to snake_case
+          submissionData.about_you = formData.aboutYou || '';
         }
-         // Add other direct mappings if necessary
       }
     });
 
@@ -187,11 +212,9 @@ const Wizard = () => {
       let response;
       if (formId) {
         response = await updateFormSubmission(formId, submissionData);
-        console.log('Form updated:', response);
       } else {
         response = await createFormSubmission(submissionData);
-        console.log('Form created:', response);
-        const newFormId = response.id; // Assuming API returns { id: ... }
+        const newFormId = response.id;
         if (newFormId) {
           setFormId(newFormId);
           localStorage.setItem(LOCAL_STORAGE_FORM_ID_KEY, newFormId);
@@ -201,27 +224,15 @@ const Wizard = () => {
         }
       }
       setIsSaving(false);
-      return true; // Indicate success
+      return true; // Success
     } catch (error) {
       console.error('Error saving form data:', error);
       setError(`Error saving data: ${error.message || 'Please try again.'}`);
       setIsSaving(false);
-      return false; // Indicate failure
+      return false; // Failure
     }
-  }, [formConfig, formData, formId, isSaving]); // Dependencies for useCallback
+  }, [formConfig, formData, formId, isSaving]);
 
-  // Helper function to check if a given step number has any enabled fields
-  const doesStepHaveEnabledFields = (stepNum) => {
-    // Ensure formConfig and fields are loaded before checking
-    if (!formConfig?.fields) {
-      console.warn("Attempted to check fields before formConfig loaded.");
-      return false; // Or true depending on desired default behavior if config isn't ready
-    }
-    return Object.values(formConfig.fields).some(
-      field => field.enabled && field.panel === stepNum
-    );
-  };
-  // --- Navigation Logic ---
   const handleNext = async () => {
     if (isSaving) return;
 
@@ -231,74 +242,57 @@ const Wizard = () => {
         return;
     }
 
-    // Determine the next logical step based on config
     let nextStep = currentStep + 1;
-    // Skip step 2 or 3 if no fields are enabled for them
     while (nextStep < PANEL_STEP_MAP[4]) {
-      // Use the helper function instead of defining one inline
-      if (doesStepHaveEnabledFields(nextStep)) {
-          break; // Found a step with fields
-      }
+      if (doesStepHaveEnabledFields(nextStep)) break;
       nextStep++;
     }
 
      if (nextStep >= PANEL_STEP_MAP[4]) {
-         handleSubmit();
+         handleSubmit(); // Treat as submit if skipping past last step
          return;
      }
 
+    // Save progress before attempting to navigate
     const success = await saveFormData(false);
     if (success) {
       setCurrentStep(nextStep);
+      localStorage.setItem(LOCAL_STORAGE_CURRENT_STEP_KEY, nextStep.toString()); // <-- Save new step
     }
   };
 
   const handlePrevious = () => {
     if (currentStep > PANEL_STEP_MAP[1] && !isSaving) {
-        // Determine the previous logical step based on config
         let prevStep = currentStep - 1;
-        while (prevStep > PANEL_STEP_MAP[1]) { // Don't skip step 1
-            // **** MODIFICATION HERE ****
-            // Use the helper function instead of defining one inline
-            if (doesStepHaveEnabledFields(prevStep)) {
-                break; // Found a step with fields
-            }
-            // **** END MODIFICATION ****
+        while (prevStep > PANEL_STEP_MAP[1]) {
+            if (doesStepHaveEnabledFields(prevStep)) break;
             prevStep--;
         }
       setCurrentStep(prevStep);
+      localStorage.setItem(LOCAL_STORAGE_CURRENT_STEP_KEY, prevStep.toString()); // <-- Save new step
     }
   };
 
   const handleSubmit = async (e) => {
-    if (e) e.preventDefault(); // Prevent default form submission if triggered by button
+    if (e) e.preventDefault();
     if (isSaving) return;
 
-    // Final validation of all relevant steps up to the current one
-     const stepToValidate = currentStep; // Validate the final data step
+     const stepToValidate = currentStep;
     if (!validateStep(stepToValidate)) {
         setError("Please correct the errors before submitting.");
-        console.log("Validation failed for final submission:", fieldErrors);
         return;
     }
 
-    // Save final data
-    const success = await saveFormData(true);
+    const success = await saveFormData(true); // Mark as complete
     if (success) {
-      clearSavedProgress();
-      setCurrentStep(PANEL_STEP_MAP[4]); // Move to Thank You
-    } else {
-       // Error is set within saveFormData
+      clearSavedProgress(); // Clear all keys on successful submission
+      setCurrentStep(PANEL_STEP_MAP[4]);
     }
   };
 
-  const clearSavedProgress = () => {
-    localStorage.removeItem(LOCAL_STORAGE_FORM_ID_KEY);
-    localStorage.removeItem(LOCAL_STORAGE_USERNAME_KEY);
-  };
 
   const resetForm = () => {
-    clearSavedProgress();
+    clearSavedProgress(); // Clears formId, username, and currentStep keys
     setFormData(INITIAL_FORM_DATA);
     setFormId(null);
     setCurrentStep(PANEL_STEP_MAP[1]);
@@ -306,53 +300,23 @@ const Wizard = () => {
     setFieldErrors({});
   };
 
-  // --- Rendering Logic ---
   const renderCurrentStep = () => {
-    // Pass fieldErrors down to step components if they need to display them
     const stepProps = { formData, handleInputChange, formConfig, fieldErrors };
-
     switch (currentStep) {
-      case PANEL_STEP_MAP[1]:
-        return <Step1Login {...stepProps} />;
-      case PANEL_STEP_MAP[2]:
-        return <StepFields {...stepProps} stepNumber={2} />;
-      case PANEL_STEP_MAP[3]:
-        return <StepFields {...stepProps} stepNumber={3} />;
-      case PANEL_STEP_MAP[4]:
-        return <Step4ThankYou onRestart={resetForm} />;
-      default:
-        return <div>Invalid Step</div>;
+      case PANEL_STEP_MAP[1]: return <Step1Login {...stepProps} />;
+      case PANEL_STEP_MAP[2]: return <StepFields {...stepProps} stepNumber={2} />;
+      case PANEL_STEP_MAP[3]: return <StepFields {...stepProps} stepNumber={3} />;
+      case PANEL_STEP_MAP[4]: return <Step4ThankYou onRestart={resetForm} />;
+      default: return <div>Invalid Step</div>;
     }
   };
 
-  // --- Main Render ---
-  if (loading) {
-    return (
-      <div className="wizard-container">
-        <div className="header"><h1>Zealthy Coding Exercise!</h1></div>
-        <LoadingIndicator message="Loading your form..." />
-      </div>
-    );
-  }
+   if (loading) { /* ... loading indicator ... */ }
+   if (!formConfig && !loading) { /* ... config error handling ... */ }
 
-   if (!formConfig) {
-    // Handle case where config failed to load but loading is false
-     return (
-      <div className="wizard-container">
-        <div className="header"><h1>Zealthy Coding Exercise!</h1></div>
-        <div className="error-message">
-          {error || "Failed to load form configuration. Cannot display the wizard."}
-        </div>
-         <button onClick={() => window.location.reload()}>Try Again</button>
-      </div>
-    );
-   }
-
-  // Determine if current step is the last data entry step based on config
-  let lastDataStep = 1;
-  if (Object.values(formConfig.fields).some(f => f.enabled && f.panel === 3)) lastDataStep = 3;
-  else if (Object.values(formConfig.fields).some(f => f.enabled && f.panel === 2)) lastDataStep = 2;
-
+  let lastDataStep = PANEL_STEP_MAP[1];
+  if (formConfig && doesStepHaveEnabledFields(3)) lastDataStep = 3;
+  else if (formConfig && doesStepHaveEnabledFields(2)) lastDataStep = 2;
 
   return (
     <div className="wizard-container">
@@ -374,14 +338,11 @@ const Wizard = () => {
               Previous
             </button>
           )}
-
           {currentStep < lastDataStep && currentStep < PANEL_STEP_MAP[4] && (
-             // Use onClick for next to handle async saving/validation before navigation
             <button type="button" onClick={handleNext} className="btn btn-primary" disabled={isSaving}>
               {isSaving ? 'Saving...' : 'Next'}
             </button>
           )}
-
           {currentStep === lastDataStep && currentStep < PANEL_STEP_MAP[4] && (
             <button type="submit" className="btn btn-success" disabled={isSaving}>
               {isSaving ? 'Submitting...' : 'Submit'}

@@ -2,6 +2,7 @@
 export const API_BASE_URL = 'https://zealthy-exercise-fb2f.onrender.com';
 export const LOCAL_STORAGE_FORM_ID_KEY = 'formId';
 export const LOCAL_STORAGE_USERNAME_KEY = 'username';
+export const LOCAL_STORAGE_CURRENT_STEP_KEY = 'currentWizardStep'; // <-- Add this
 
 export const PANEL_STEP_MAP = {
   1: 1, // Login info is always step 1

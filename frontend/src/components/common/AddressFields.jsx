@@ -29,7 +29,7 @@ const AddressFields = ({ formData, onChange, required = true }) => {
         <div className="form-group zip-field">
           <FormField
             name="zipCode"
-            type="text" // Use text for flexibility (e.g., zip+4)
+            type="text"
             value={formData.zipCode}
             onChange={onChange}
             required={required}
