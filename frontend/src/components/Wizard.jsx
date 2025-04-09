@@ -1,8 +1,6 @@
 // src/components/Wizard.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-// ... (imports remain the same)
 import {
   fetchFormConfig,
   fetchFormSubmission,
@@ -29,12 +27,10 @@ import StepFields from './steps/StepFields';
 import Step4ThankYou from './steps/Step4ThankYou';
 
 const INITIAL_FORM_DATA = {};
-
 // Helper function to check if a value is considered "blank" (null, undefined, or empty string after trimming)
 const isBlank = (value) => {
     return value === null || value === undefined || (typeof value === 'string' && value.trim() === '');
 };
-
 
 const Wizard = () => {
   const navigate = useNavigate();
@@ -55,7 +51,6 @@ const Wizard = () => {
   }, [formConfig]);
 
   const clearSavedProgress = useCallback(() => {
-    console.log("Clearing saved progress from localStorage.");
     localStorage.removeItem(LOCAL_STORAGE_FORM_ID_KEY);
     localStorage.removeItem(LOCAL_STORAGE_USERNAME_KEY);
     localStorage.removeItem(LOCAL_STORAGE_CURRENT_STEP_KEY);
@@ -72,11 +67,8 @@ const Wizard = () => {
        let localConfig = null;
 
        try {
-         console.log("Wizard Mount: Fetching config...");
          localConfig = await fetchFormConfig();
          setFormConfig(localConfig);
-
-         console.log("Wizard Mount: Checking localStorage...");
          const savedFormDataString = localStorage.getItem(LOCAL_STORAGE_FORM_DATA_KEY);
          const savedFormId = localStorage.getItem(LOCAL_STORAGE_FORM_ID_KEY);
          const savedUsername = localStorage.getItem(LOCAL_STORAGE_USERNAME_KEY);
@@ -86,7 +78,6 @@ const Wizard = () => {
              try {
                  const parsedData = JSON.parse(savedFormDataString);
                  if (parsedData && typeof parsedData === 'object' && Object.keys(parsedData).length > 0) {
-                     console.log("Restoring formData from localStorage.");
                      restoredData = parsedData;
                      setFormData(restoredData);
                      if (savedFormId) setFormId(savedFormId);
@@ -103,14 +94,12 @@ const Wizard = () => {
 
          if (source !== "local" && savedFormId && savedUsername) {
            try {
-             console.log(`Fetching submission ${savedFormId} for user ${savedUsername}...`);
              const savedSubmission = await fetchFormSubmission(savedFormId);
              if (
                savedSubmission &&
                savedSubmission.username === savedUsername &&
                !savedSubmission.is_complete
              ) {
-               console.log("Restoring formData from API.");
                const addressParts = parseAddressString(savedSubmission.address);
                restoredData = {
                  username: savedSubmission.username || '',
@@ -126,7 +115,6 @@ const Wizard = () => {
                setFormId(savedFormId);
                source = "api";
              } else {
-               console.log("Saved form ID/username found, but data mismatch, form completed, or fetch failed. Clearing potentially stale state.");
                clearSavedProgress();
                setFormData(INITIAL_FORM_DATA);
                setFormId(null);
@@ -172,9 +160,6 @@ const Wizard = () => {
              setFormData(INITIAL_FORM_DATA);
              setFormId(null);
          }
-
-         console.log(`Restoration source: ${source}. Data suggests step ${dataDerivedStep}. Saved step: ${stepFromStorage}. Final step: ${finalInitialStep}`);
-
        } catch (configError) {
          console.error('Error fetching form configuration:', configError);
          setError('Failed to load form configuration. Please try again later.');
@@ -190,11 +175,8 @@ const Wizard = () => {
          setLoading(false);
        }
     };
-
     loadInitialData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clearSavedProgress]);
-
 
   useEffect(() => {
     if (
@@ -205,7 +187,6 @@ const Wizard = () => {
        )
     {
       try {
-        console.log(`Saving formData to localStorage for step ${currentStep}`);
         localStorage.setItem(LOCAL_STORAGE_FORM_DATA_KEY, JSON.stringify(formData));
       } catch (e) {
         console.error("Error saving form data to localStorage:", e);
@@ -226,21 +207,18 @@ const Wizard = () => {
     }
   };
 
-  // Update the validateStep function in Wizard.jsx
+// Update the validateStep function in Wizard.jsx
 const validateStep = useCallback((step) => {
   const errors = {};
   let isValid = true;
   if (!formConfig?.fields) {
       console.warn("Validation skipped: formConfig not loaded.");
-      return true; // Can't validate without config
+      return true; 
   }
 
-  console.log(`Validating step ${step} for required fields`);
   Object.entries(formConfig.fields).forEach(([fieldName, fieldConfig]) => {
     // Only validate fields that are ENABLED for the CURRENT step being validated
     if (fieldConfig.enabled && fieldConfig.panel === step) {
-
-      // Handle specific field names and their corresponding formData keys
       if (fieldName === 'username') {
         if (isBlank(formData.username)) { errors.username = 'Username is required.'; isValid = false; }
       } else if (fieldName === 'password') {
@@ -269,17 +247,11 @@ const validateStep = useCallback((step) => {
          // Use fieldName for formData key here
          if (isBlank(formData.aboutYou)) { errors.aboutYou = 'About You is required.'; isValid = false; }
       }
-      // Add checks for any other potential fields configured in Admin.jsx here
     }
   });
-
-  if (!isValid) {
-      console.log("Validation failed (required fields check):", errors);
-  }
   setFieldErrors(errors); // Update field errors state
   return isValid;
 }, [formConfig, formData]);
-
 
   const findLastEnabledStep = useCallback(() => {
      let lastStep = PANEL_STEP_MAP[1];
@@ -290,7 +262,6 @@ const validateStep = useCallback((step) => {
              break;
          }
      }
-     console.log("Last data step determined as:", lastStep);
      return lastStep;
   }, [formConfig, doesStepHaveEnabledFields]);
 
@@ -301,21 +272,14 @@ const validateStep = useCallback((step) => {
         console.warn("Save prevented: Already saving or formConfig not ready.");
         return false;
     }
-
     const stepToValidate = isComplete ? lastDataStep : currentStep;
-    console.log(`Save attempt: Validating step ${stepToValidate}. Is Complete: ${isComplete}`);
-
-    // *** Validation is now more stringent ***
     if (!validateStep(stepToValidate)) {
-        console.log("Save prevented: Validation failed.");
-        // Ensure general error reflects validation failure if needed,
-        // but fieldErrors should guide the user primarily.
         setError("Please correct the errors indicated below.");
         return false;
     }
 
     setIsSaving(true);
-    setError(''); // Clear previous general errors before trying to save
+    setError(''); 
 
     const submissionData = {
       username: formData.username,
@@ -326,7 +290,6 @@ const validateStep = useCallback((step) => {
     Object.entries(formConfig.fields).forEach(([fieldName, fieldConfig]) => {
       if (fieldConfig.enabled && fieldName !== 'username' && fieldName !== 'password') {
         if (fieldName === 'address') {
-          // combineAddressParts should handle potentially blank parts if validation somehow passed
           submissionData.address = combineAddressParts(formData);
         } else if (fieldName === 'birthdate') {
            // Send null if blank, otherwise send the value
@@ -341,20 +304,16 @@ const validateStep = useCallback((step) => {
     try {
       let response;
       const currentFormId = formId || localStorage.getItem(LOCAL_STORAGE_FORM_ID_KEY);
-      console.log(`Saving data. Form ID: ${currentFormId}. Data:`, submissionData);
 
       if (currentFormId) {
-        console.log(`Updating submission ${currentFormId}`);
         response = await updateFormSubmission(currentFormId, submissionData);
       } else {
-        console.log("Creating new submission");
         if (!submissionData.username || !submissionData.password) {
              throw new Error("Username and Password are required to create a submission.");
         }
         response = await createFormSubmission(submissionData);
         const newFormId = response?.id;
         if (newFormId) {
-          console.log(`Submission created with ID: ${newFormId}`);
           setFormId(newFormId);
           localStorage.setItem(LOCAL_STORAGE_FORM_ID_KEY, newFormId);
           localStorage.setItem(LOCAL_STORAGE_USERNAME_KEY, formData.username);
@@ -363,12 +322,9 @@ const validateStep = useCallback((step) => {
            throw new Error("API did not return a form ID on creation.");
         }
       }
-
-      console.log("API save successful.");
       setIsSaving(false);
 
       if (isComplete) {
-           console.log("Form marked complete, clearing saved progress.");
            clearSavedProgress();
       }
       return true;
@@ -392,61 +348,44 @@ const validateStep = useCallback((step) => {
       isSaving,
       currentStep,
       lastDataStep,
-      validateStep,       // validateStep dependency is key here
+      validateStep,
       clearSavedProgress,
   ]);
 
   const handleNext = async () => {
     if (isSaving) return;
-    console.log("Next button clicked for step:", currentStep);
-
-    // *** Validation checks current step for required fields ***
     if (!validateStep(currentStep)) {
-        console.log("Cannot proceed to next: Validation failed for current step.");
         setError("Please fill in all required fields for this step."); // Set general error
         return;
     }
-    // Clear general error if validation passes
     setError('');
 
     let nextStep = currentStep + 1;
     while (nextStep < PANEL_STEP_MAP[4]) {
       if (doesStepHaveEnabledFields(nextStep)) break;
-      console.log(`Skipping step ${nextStep} as it has no enabled fields.`);
       nextStep++;
     }
 
      if (nextStep >= PANEL_STEP_MAP[4]) {
-         console.log("Next step is Thank You page or beyond, triggering submit.");
          handleSubmit();
          return;
      }
-
-    console.log(`Attempting to save progress before moving to step ${nextStep}...`);
     const success = await saveFormData(false);
 
     if (success) {
-      console.log(`Save successful. Moving to step ${nextStep}.`);
       setCurrentStep(nextStep);
       localStorage.setItem(LOCAL_STORAGE_CURRENT_STEP_KEY, nextStep.toString());
       setFieldErrors({}); // Clear specific field errors when moving step
-    } else {
-        console.log("API save failed, staying on current step.");
-        // Error message should already be set by saveFormData or validation
     }
   };
 
   const handlePrevious = () => {
     if (currentStep > PANEL_STEP_MAP[1] && !isSaving) {
-        console.log("Previous button clicked for step:", currentStep);
         let prevStep = currentStep - 1;
         while (prevStep > PANEL_STEP_MAP[1]) {
             if (doesStepHaveEnabledFields(prevStep)) break;
-            console.log(`Skipping step ${prevStep} backwards as it has no enabled fields.`);
             prevStep--;
         }
-
-      console.log(`Moving back to step ${prevStep}.`);
       setCurrentStep(prevStep);
       localStorage.setItem(LOCAL_STORAGE_CURRENT_STEP_KEY, prevStep.toString());
       setFieldErrors({});
@@ -457,13 +396,8 @@ const validateStep = useCallback((step) => {
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     if (isSaving) return;
-    console.log("Submit button clicked.");
-
-    // *** Validation checks last data step for required fields ***
-    console.log(`Validating final step (${lastDataStep}) before submission...`);
     if (!validateStep(lastDataStep)) {
-        setError("Please correct the errors indicated below before submitting."); // Use a general message
-        // If the user is not currently on the step with the error, navigate them there
+        setError("Please correct the errors indicated below before submitting.");
         if (currentStep !== lastDataStep) {
              console.log(`Validation failed on step ${lastDataStep}, navigating user there from ${currentStep}.`);
              setCurrentStep(lastDataStep);
@@ -474,22 +408,16 @@ const validateStep = useCallback((step) => {
     // Clear general error if validation passes
     setError('');
 
-    console.log("Attempting final save (isComplete=true)...");
     const success = await saveFormData(true);
 
     if (success) {
-      console.log("Submission successful. Moving to Thank You page.");
       setFieldErrors({});
       setError('');
       setCurrentStep(PANEL_STEP_MAP[4]);
-    } else {
-        console.log("Final submission failed.");
-        // Error message should have been set by saveFormData or validation
     }
   };
 
   const resetForm = useCallback(() => {
-    console.log("Resetting form completely.");
     clearSavedProgress();
     setFormData(INITIAL_FORM_DATA);
     setFormId(null);
@@ -507,7 +435,6 @@ const validateStep = useCallback((step) => {
     };
     switch (currentStep) {
       case PANEL_STEP_MAP[1]: return <Step1Login {...stepProps} />;
-      // Ensure StepFields uses fieldErrors to display messages near inputs
       case PANEL_STEP_MAP[2]: return <StepFields {...stepProps} stepNumber={2} />;
       case PANEL_STEP_MAP[3]: return <StepFields {...stepProps} stepNumber={3} />;
       case PANEL_STEP_MAP[4]: return <Step4ThankYou onRestart={resetForm} />;

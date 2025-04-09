@@ -3,7 +3,7 @@
 /**
  * Parses a combined address string into components.
  * Handles potential variations and missing parts gracefully.
- * @param {string | null | undefined} addressString - e.g., "123 Main St, Anytown, CA 94107"
+ * @param {string | null | undefined} addressString
  * @returns {{ streetAddress: string, city: string, state: string, zipCode: string }}
  */
 export const parseAddressString = (addressString) => {
@@ -17,13 +17,11 @@ export const parseAddressString = (addressString) => {
       if (parts.length > 1) result.city = parts[1];
       if (parts.length > 2) {
         const stateZipPart = parts[2].trim();
-        // Match potential state (e.g., CA, NY) and zip (e.g., 12345, 12345-6789)
         const stateZipMatch = stateZipPart.match(/^([A-Za-z\s]+)\s*(\d{5}(?:-\d{4})?)?$/);
         if (stateZipMatch) {
           result.state = stateZipMatch[1] ? stateZipMatch[1].trim() : '';
           result.zipCode = stateZipMatch[2] ? stateZipMatch[2].trim() : '';
         } else {
-          // Fallback if regex fails, assume state is the whole part if no zip format detected
           result.state = stateZipPart;
         }
       }
@@ -66,7 +64,7 @@ export const parseAddressString = (addressString) => {
     }
   
     // Parse YYYY-MM-DD to a date object
-    const date = new Date(birthdate + 'T00:00:00'); // Add time to ensure consistent timezone handling
+    const date = new Date(birthdate + 'T00:00:00');
   
     // Check if date is valid (not Feb 30, etc.)
     if (isNaN(date.getTime())) {
@@ -120,7 +118,4 @@ export const parseAddressString = (addressString) => {
     return 1;
   };
   
-  /**
-   * Gets today's date in YYYY-MM-DD format for the max attribute.
-   */
   export const getTodayDateString = () => new Date().toISOString().split('T')[0];

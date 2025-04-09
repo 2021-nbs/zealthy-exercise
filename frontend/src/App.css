@@ -28,7 +28,7 @@ body {
 }
 
 .header h1 {
-  color: #5c6bc0; /* Keeping existing header color */
+  color: #5c6bc0;
 }
 
 .admin-link, .back-link, .nav-link, .back-to-form-btn {
@@ -58,41 +58,29 @@ body {
   gap: 20px;
 }
 
-/* --- Error Styling START --- */
-
-/* Style for the general error message shown at the top of the wizard */
 .general-error {
-  color: #721c24; /* Darker red text for better contrast */
-  background-color: #f8d7da; /* Light pink background */
-  border: 1px solid #f5c6cb; /* Reddish border */
+  color: #721c24;
+  background-color: #f8d7da; 
+  border: 1px solid #f5c6cb; 
   padding: 0.75rem 1.25rem;
-  margin-bottom: 1rem; /* Space below the error message */
-  border-radius: 4px; /* Match other radius */
-  text-align: center; /* Or left, as preferred */
-  font-size: 15px; /* Slightly smaller than default text */
-  font-weight: bold; /* Make it stand out */
+  margin-bottom: 1rem; 
+  border-radius: 4px; 
+  text-align: center; 
+  font-size: 15px;
+  font-weight: bold; 
 }
 
-/* Style for specific field-level error messages (using existing .field-error class) */
-.field-error { /* Updated properties */
-  color: #dc3545; /* Bootstrap's danger color (standard red) */
-  font-size: 0.875em; /* Slightly smaller font (around 14px if base is 16px) */
-  margin-top: 5px; /* Consistent spacing below input */
-  display: block; /* Ensure it takes its own line */
-  /* Removed font-weight: 500; to make it less bold if desired, or keep it */
+.field-error { 
+  color: #dc3545; 
+  font-size: 0.875em; 
+  margin-top: 5px; 
+  display: block; 
 }
 
-/* Style for inputs that have errors */
 .input-error {
-  border-color: #dc3545 !important; /* Force red border */
-  /* Add focus style if needed */
-  /* box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25); */
+  border-color: #dc3545 !important; 
 }
 
-/* --- Error Styling END --- */
-
-
-/* Wizard Styles */
 .wizard-container {
   background-color: #fff;
   border-radius: 8px;
@@ -188,7 +176,6 @@ body {
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 16px;
-  /* Added transition for smoother border color change */
   transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
 }
 
@@ -197,12 +184,10 @@ body {
   min-height: 120px;
 }
 
-/* .field-error definition is now handled in the Error Styling section above */
-
 .buttons-container {
   display: flex;
   justify-content: space-between;
-  margin-top: 1.5rem; /* Added some top margin */
+  margin-top: 1.5rem;
 }
 
 .btn {
@@ -212,10 +197,9 @@ body {
   font-size: 16px;
   font-weight: bold;
   cursor: pointer;
-  transition: background-color 0.3s, opacity 0.15s ease-in-out; /* Added opacity transition */
+  transition: background-color 0.3s, opacity 0.15s ease-in-out; 
 }
 
-/* Added disabled style */
 .btn:disabled {
     opacity: 0.65;
     cursor: not-allowed;
@@ -236,7 +220,7 @@ body {
   color: #fff;
 }
 
-.btn:hover:not(:disabled) { /* Ensure hover effect doesn't apply when disabled */
+.btn:hover:not(:disabled) {
   opacity: 0.9;
 }
 
@@ -394,7 +378,6 @@ body {
   color: #666;
 }
 
-/* Data Display Styles */
 .data-display-container {
   background-color: #fff;
   border-radius: 8px;
