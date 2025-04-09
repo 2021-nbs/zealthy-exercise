@@ -59,15 +59,14 @@ export const parseAddressString = (addressString) => {
       return { isValid: false, message: "Birthdate is required." };
     }
   
-    // Check if format is valid for MM/DD/YYYY
-    const dateRegex = /^(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\/\d{4}$/; // Format: MM/DD/YYYY
+    // Check if format is valid
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/; // Format: YYYY-MM-DD
     if (!dateRegex.test(birthdate)) {
-      return { isValid: false, message: "Birthdate must be in MM/DD/YYYY format." };
+      return { isValid: false, message: "Birthdate must be in YYYY-MM-DD format." };
     }
   
-    // Parse MM/DD/YYYY to a date object
-    const [month, day, year] = birthdate.split('/').map(Number);
-    const date = new Date(year, month - 1, day); // month is 0-indexed in JS Date
+    // Parse YYYY-MM-DD to a date object
+    const date = new Date(birthdate + 'T00:00:00'); // Add time to ensure consistent timezone handling
   
     // Check if date is valid (not Feb 30, etc.)
     if (isNaN(date.getTime())) {
@@ -75,7 +74,7 @@ export const parseAddressString = (addressString) => {
     }
   
     // Check if the entered date parts match what JavaScript parsed
-    // This catches cases like 02/31/2023 which JS converts to 03/03/2023
+    const [year, month, day] = birthdate.split('-').map(Number);
     const parsedYear = date.getFullYear();
     const parsedMonth = date.getMonth() + 1; // JS months are 0-indexed
     const parsedDay = date.getDate();
@@ -124,10 +123,4 @@ export const parseAddressString = (addressString) => {
   /**
    * Gets today's date in YYYY-MM-DD format for the max attribute.
    */
-  export const getTodayDateString = () => {
-    const today = new Date();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const year = today.getFullYear();
-    return `${month}/${day}/${year}`;
-  };
+  export const getTodayDateString = () => new Date().toISOString().split('T')[0];

@@ -36,12 +36,12 @@ const StepFields = ({ stepNumber, formData, formConfig, handleInputChange, field
             <FormField
               key={fieldName}
               name="birthdate"
-              type="text" // Changed from "date" to "text"
-              placeholder="MM/DD/YYYY" // Add a placeholder to guide the user
-              value={formData.birthdate}
+              type="date"
+              value={formData.birthdate || ''}
               onChange={handleInputChange}
               required={true}
               error={fieldErrors.birthdate || ''}
+              max={getTodayDateString()} // Add max attribute to prevent future dates
             />
           );
         } else if (fieldName === 'aboutYou') {
