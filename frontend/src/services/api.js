@@ -30,5 +30,3 @@ export const updateAdminFormConfig = async (config) => {
     const response = await apiClient.post('/api/update-form-config', config);
     return response.data;
 }
-
-// Add other API functions (like for Admin if needed)
