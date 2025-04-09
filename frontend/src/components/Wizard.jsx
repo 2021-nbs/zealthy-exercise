@@ -229,34 +229,51 @@ const Wizard = () => {
   const saveFormData = useCallback(async (isComplete = false) => {
     if (!formConfig?.fields || isSaving) return false;
 
-    const stepToValidate = currentStep === PANEL_STEP_MAP[4] ? lastDataStep : currentStep;
+    // Determine which step's fields need validation before saving
+    // If completing, validate the last step with fields. Otherwise, validate the current step.
+    const stepToValidate = isComplete ? lastDataStep : currentStep;
+
     // Use the memoized validateStep now
     if (!validateStep(stepToValidate)) {
+        // Set error only if validation fails right before the save attempt
         setError("Please correct the validation errors before proceeding.");
-        return false;
+        // Ensure fieldErrors state is updated by validateStep
+        return false; // Stop the save process
     }
 
     setIsSaving(true);
-    setError('');
+    setError(''); // Clear previous errors before trying to save
 
+    // --- FIX IS HERE ---
+    // Always include password because the database requires it (NOT NULL constraint)
+    // Validation should ensure formData.password is populated before this point.
     const submissionData = {
       username: formData.username,
+      password: formData.password, // <-- Directly include the password from state
       is_complete: isComplete,
     };
+    // --- END FIX ---
 
-    if (formConfig.fields.password?.enabled) {
-      submissionData.password = formData.password;
-    }
 
+    // Map other enabled fields based on config, excluding username/password which are handled above
     Object.entries(formConfig.fields).forEach(([fieldName, fieldConfig]) => {
-      if (fieldConfig.enabled) {
+      // Skip username and password as they are explicitly handled
+      if (fieldConfig.enabled && fieldName !== 'username' && fieldName !== 'password') {
         if (fieldName === 'address') {
           submissionData.address = combineAddressParts(formData);
-        } else if (fieldName === 'birthdate' && formData.birthdate) {
-          submissionData.birthdate = formData.birthdate;
+        } else if (fieldName === 'birthdate') {
+           // Only include birthdate if it has a value, otherwise DB might complain if it expects DATE format
+           if (formData.birthdate) {
+                submissionData.birthdate = formData.birthdate;
+           } else {
+                // Explicitly set to null if your DB column allows nulls and you want to clear it
+                // Or omit if the DB default is NULL and you haven't entered one
+                // submissionData.birthdate = null; // Uncomment if necessary
+           }
         } else if (fieldName === 'aboutYou') {
-          submissionData.about_you = formData.aboutYou || '';
+          submissionData.about_you = formData.aboutYou || ''; // Use empty string if undefined/null
         }
+        // Add mappings for any other potential fields here
       }
     });
 
@@ -265,9 +282,15 @@ const Wizard = () => {
       const currentFormId = formId || localStorage.getItem(LOCAL_STORAGE_FORM_ID_KEY);
 
       if (currentFormId) {
+        // When updating, you might still want to send the password if the user could have changed it,
+        // or if the backend requires it for validation even on update.
+        // Given the NOT NULL constraint, it's safest to always send it.
         response = await updateFormSubmission(currentFormId, submissionData);
       } else {
-        if (!submissionData.username) throw new Error("Username is required to create a submission.");
+        // Ensure username and password are provided for creation (validation should catch this)
+        if (!submissionData.username || !submissionData.password) {
+             throw new Error("Username and Password are required to create a submission.");
+        }
         response = await createFormSubmission(submissionData);
         const newFormId = response.id;
         if (newFormId) {
@@ -280,14 +303,21 @@ const Wizard = () => {
       }
       setIsSaving(false);
       if (isComplete) {
-           clearSavedProgress();
+           clearSavedProgress(); // Call the memoized version
       }
-      return true;
+      return true; // Success
     } catch (error) {
       console.error('Error saving form data to API:', error);
-      setError(`Error saving data: ${error.message || 'Please try again.'}`);
+      // Log the detailed Supabase error if available in the response
+      if (error.response && error.response.data) {
+          console.error('Supabase error details:', error.response.data);
+          // Try to provide a more specific message if possible
+          setError(`Error saving data: ${error.response.data.message || error.message || 'Please try again.'}`);
+      } else {
+         setError(`Error saving data: ${error.message || 'Please try again.'}`);
+      }
       setIsSaving(false);
-      return false;
+      return false; // Failure
     }
   }, [
       formConfig,
@@ -296,9 +326,9 @@ const Wizard = () => {
       isSaving,
       currentStep,
       lastDataStep,
-      validateStep,         
-      clearSavedProgress    
-  ]);
+      validateStep,
+      clearSavedProgress
+  ])
 
   const handleNext = async () => {
     if (isSaving) return;
