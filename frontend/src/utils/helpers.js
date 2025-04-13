@@ -92,7 +92,6 @@ export const parseAddressString = (addressString) => {
     return { isValid: true, message: "" };
   };
   
-  
   /**
    * Determines the initial step based on saved data and config.
    * @param {object} savedData - The fetched submission data.

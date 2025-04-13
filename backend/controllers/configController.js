@@ -35,7 +35,6 @@ let formConfig = {
     }
   
     // Ensure at least one ENABLED field is assigned to each panel that is expected to have fields
-    // (This assumes if ANY field is enabled, both panels need at least one enabled field - adjust if needed)
      const enabledFields = Object.values(newConfig.fields).filter(field => field.enabled);
      if (enabledFields.length > 0) { // Only validate panels if there are enabled fields
          const panel2EnabledFields = enabledFields.filter(field => field.panel === 2);
