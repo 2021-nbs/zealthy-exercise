@@ -33,7 +33,7 @@ app.use(cors({
 app.use(bodyParser.json());
 
 // Root route for health checks or basic info
-app.get('/', (res) => {
+app.get('/', (req, res) => {
   res.json({ status: 'Zealthy API is running', version: '1.0.0' });
 });
 
