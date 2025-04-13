@@ -94,7 +94,6 @@ const Admin = () => {
       field => field && field.enabled && field.panel === 3
     );
 
-    // Add check: At least one field must be enabled overall (optional but good)
     const hasAnyEnabledField = Object.values(fields).some(field => field && field.enabled);
 
     if (!hasAnyEnabledField) {
