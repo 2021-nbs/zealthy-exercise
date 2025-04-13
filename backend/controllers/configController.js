@@ -1,6 +1,5 @@
 // Backend/controllers/configController.js
 
-// Initial form configuration (lives in this controller now)
 let formConfig = {
     fields: {
       address: { enabled: true, panel: 2 },
@@ -10,7 +9,7 @@ let formConfig = {
   };
   
   // GET /api/form-config
-  const getFormConfig = (res) => {
+  const getFormConfig = (req, res) => {
     res.json(formConfig);
   };
   
