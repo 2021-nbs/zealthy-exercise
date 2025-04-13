@@ -190,8 +190,6 @@ const Wizard = () => {
       } catch (e) {
         console.error("Error saving form data to localStorage:", e);
       }
-    } else if (currentStep === PANEL_STEP_MAP[4]) {
-        console.log("On Thank You page (Step 4), preventing save to localStorage.");
     }
   }, [formData, loading, isSaving, currentStep]);
 
@@ -279,7 +277,7 @@ const validateStep = useCallback((step) => {
       password: formData.password,
       is_complete: isComplete,
     };
-
+    
     Object.entries(formConfig.fields).forEach(([fieldName, fieldConfig]) => {
       if (fieldConfig.enabled && fieldName !== 'username' && fieldName !== 'password') {
         if (fieldName === 'address') {
@@ -289,7 +287,7 @@ const validateStep = useCallback((step) => {
            submissionData.birthdate = isBlank(formData.birthdate) ? null : formData.birthdate;
         } else if (fieldName === 'aboutYou') {
            // Send empty string if blank/undefined
-          submissionData.about_you = formData.aboutYou || '';
+          submissionData.aboutYou = formData.aboutYou || '';
         }
       }
     });
@@ -316,7 +314,7 @@ const validateStep = useCallback((step) => {
         }
       }
       setIsSaving(false);
-      
+
       if (isComplete) {
            clearSavedProgress();
       }

@@ -22,7 +22,9 @@ export const createFormSubmission = async (data) => {
 };
 
 export const updateFormSubmission = async (formId, data) => {
+  console.log("Received update payload:", data);
   const response = await apiClient.put(`/api/update-form/${formId}`, data);
+  console.log(response.data);
   return response.data;
 };
 
